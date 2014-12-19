@@ -1,1 +1,17 @@
-line, polyline, path { stroke: black; fill: none; }
+/* general definitions */
+
+body { background-color: #F9F9F9; }
+
+line, polyline, path { stroke: black; stroke-width: 1px; fill: none; }
+
+/* specific elements of zwl image */
+
+.trainline polyline { stroke: #444; stroke-width: 1.5px; }
+
+.nowmarker { stroke: #bb0; stroke-width: 2px; }
+.pastblur { stroke: none; fill: white; }
+.pastblur-past { fill-opacity: .6; }
+
+.trainboxframe { stroke: black; stroke-width: 1px; fill: white; }
+
+.locaxis text { text-anchor: middle; }
