@@ -4,9 +4,11 @@ ZWL.Display = function (element, graphinfo, timezoom) {
     this.svg = SVG(element).translate(0.5, 0.5);
                             /* put lines in the middle of pixels -> sharper*/
 
-    this.timezoom = defaultval(timezoom, .2);
+    this.timezoom = defaultval(timezoom, .2); // pixels per second
+    this.epoch = 13042800; // the time that corresponds to y=0
     this.now = 13092300;
     this.starttime = this.now - 600;
+    this.endtime = null;
     
     // TODO: parse this
     this.graphs = [
@@ -22,20 +24,27 @@ ZWL.Display.prototype = {
         this.width = width;
         this.height = height;
         this.svg.size(width,height);
+        this.endtime = this.starttime + this.height/this.timezoom;
 
         //TODO calculate useful arrangement
-        this.graphs[0].sizechange(30,30,width-160,height-60);
-        this.timeaxis.sizechange(width-100,30, 100,height-60);
+        this.graphs[0].sizechange(30,30,width-120,height-60);
+        this.timeaxis.sizechange(width-80,30, 75,height-60);
+    },
+    timechange: function () {
+        this.graphs[0].timechange();
+        this.timeaxis.timechange();
+        this.endtime = this.starttime + this.height/this.timezoom;
+
     },
     redraw: function () {
         this.graphs[0].redraw();
         this.timeaxis.redraw();
     },
     time2y: function (time) {
-        var d = new Date(defaultval(time, this.now)*1000);
-        //TODO: base on start of session or something not epoch
-        return this.timezoom * (d.getDay()*86400 + d.getHours()*3600 +
-                                d.getMinutes()*60 + d.getSeconds());
+        return this.timezoom * (time - this.epoch);
+    },
+    y2time: function (y) {
+        return y / this.timezoom + this.epoch;
     },
 };
 
@@ -48,9 +57,13 @@ ZWL.Graph = function (display, strecke, viewcfg) {
     this.xend = defaultval(viewcfg.xend, 1);
     this.trains = {};
     this.svg = this.display.svg.group();
-    this.trainbox = this.svg.group().addClass('trainbox');
 
-    this.trainboxframe = this.trainbox.rect(0,0).addClass('trainboxframe');
+    this.trainboxframe = this.svg.rect(0,0).addClass('trainboxframe');
+    this.trainboxcliprect = this.svg.rect(0,0);
+    this.trainboxclip = this.svg.clip().add(this.trainboxcliprect);
+    this.trainbox = this.svg.group().addClass('trainbox')
+                                    .clipWith(this.trainboxclip);
+
     this.nowmarker = this.trainbox.line(-1,-1,-1,-1).addClass('nowmarker');
 
     this.pastblur = {};
@@ -84,14 +97,24 @@ ZWL.Graph.prototype = {
         this.visheight = height;
         this.redraw();
     },
+    timechange: function () {
+        // code to be executed whenever the display's `starttime` changes
+
+        this.trainbox.translate(this.x, this.y - this.display.time2y(this.display.starttime));
+
+        this.trainboxcliprect
+            .size(this.viswidth,this.visheight)
+            .move(0,this.display.time2y(this.display.starttime));
+    },
     redraw: function () {
         // size of internal drawing (covering the whole strecke)
         this.drawwidth = this.viswidth / (this.xend-this.xstart)
-        this.trainbox.translate(this.x, this.y - this.display.time2y(this.display.starttime));
         this.trainboxframe
             .size(this.viswidth, this.visheight)
-            .move(this.pos2x(this.xstart),
-                  this.display.time2y(this.display.starttime));
+            .move(this.x, this.y)
+            .back();
+
+        this.timechange();
 
         this.locaxis.g.translate(this.x, this.y-this.measures.locaxisoverbox);
         this.locaxis.bottom.translate(0, this.visheight
@@ -102,15 +125,17 @@ ZWL.Graph.prototype = {
                 this.locaxis[loc.id].move(this.pos2x(loc.id), 0);
         }
 
-        this.nowmarker.plot(0,this.display.time2y(),
-                            this.drawwidth,this.display.time2y());
-        this.pastblur.past.size(this.drawwidth, this.display.time2y());
+        this.pastblur.past
+            .size(this.drawwidth, this.display.time2y(this.display.now))
         this.pastblur.future
-            .size(this.drawwidth, 99999)
-            .move(0, this.display.time2y());
+            .size(this.drawwidth, 999999)
+            .move(0, this.display.time2y(this.display.now));
+
+        this.nowmarker.plot(0,this.display.time2y(this.display.now),
+                            this.drawwidth,this.display.time2y(this.display.now));
 
         this.fetch_trains();
-        for ( tid in this.trains ) {
+        for ( var tid in this.trains ) {
             var train = this.trains[tid];
             if ( train.status == 'deleted' ) {
                 train.drawing.remove();
@@ -121,13 +146,19 @@ ZWL.Graph.prototype = {
             }
         }
     },
+    _fetch_trains_called: false,
     fetch_trains: function () {
-        if ( !this.trains.length ) {
+        if ( !this._fetch_trains_called ) {
             this.trains = {
-                406: {'info':ice406, 'status':'new'},
-                2342: {'info':ire2342, 'status':'new'},
+                406: {'info':ice406, 'status': 'new'},
+                2342: {'info':ire2342, 'status': 'new'},
+            }
+        } else {
+            for ( var tid in this.trains ) {
+                this.trains[tid].status = 'updated';
             }
         }
+        this._fetch_trains_called = true;
     },
     pos2x: function (id) {
         // allow values like xstart and xend as input
@@ -153,7 +184,23 @@ ZWL.TimeAxis = function ( display ) {
 
     this.mask = this.display.svg.rect();
     this.svg = this.display.svg.group().addClass('timeaxis').clipWith(this.mask);
-    this.axis = this.svg.group();
+    this.axis = this.svg.group().draggable(this.draggableconstraints);
+    this.bg = this.axis.rect().addClass('timeaxis-bg');
+
+    var timeaxis = this; // `this` is overridden in dragging functions
+    this.axis.dragstart = function (delta, event) {
+        timeaxis.svg.addClass('grabbing');
+    }
+    this.axis.dragmove = function (delta, event) {
+        //display.starttime -= display.timezoom*delta.y;
+        var old = timeaxis.display.starttime;
+        timeaxis.display.starttime = timeaxis.display.y2time((-this.transform().y));
+        timeaxis.display.timechange();
+    };
+    this.axis.dragend = function (delta, event) {
+        timeaxis.svg.removeClass('grabbing');
+        timeaxis.display.redraw();
+    };
 
     this.times = {}
 }
@@ -168,12 +215,18 @@ ZWL.TimeAxis.prototype = {
         this.height = height;
         this.redraw();
     },
+    timechange: function () {
+        this.axis.translate(0, -this.display.time2y(this.display.starttime));
+    },
     redraw: function () {
-        this.axis.translate(this.x, this.y - this.display.time2y(this.display.starttime));
+        this.timechange();
+        this.svg.translate(this.x,this.y);
+        this.mask.size(this.width,this.height).move(0,0);
 
-        this.mask.size(this.width,this.height).move(this.x,this.y);
-
-        // we draw about one exta screen height to the top and bottom (for scrolling)
+        // we draw everything about one extra screen height to the top and
+        // bottom (for scrolling)
+        this.bg.size(this.width*2,this.height*3)
+               .move(-this.width/2, this.display.time2y(this.display.starttime) - this.height);
         for ( var time in this.times ) {
             this.times[time].remember('unused', true);
         }
@@ -186,13 +239,13 @@ ZWL.TimeAxis.prototype = {
                 t = this.times[time] = this.axis.group();
                 if ( (time % 600) == 0 ) {
                     text = t.plain(timeformat(time, 'hm'));
-                    text.move(15, -text.bbox().height / 2);
+                    text.move(20, -text.bbox().height / 2);
                     t.remember('text', text);
                 }
                 if ( (time % 300) == 0)
-                    line = t.line(0,0, 10,0);
+                    line = t.line(5,0, 15,0);
                 else
-                    line = t.line(5,0, 10,0);
+                    line = t.line(10,0, 15,0);
                 t.remember('line', line.attr('title', timeformat(time, 'hm')));
             }
             this.times[time].translate(0, this.display.time2y(time))
@@ -204,6 +257,10 @@ ZWL.TimeAxis.prototype = {
                 this.times[time].remove();
                 delete this.times[time];
             }
+    },
+
+    draggableconstraints: function (x, y) {
+        return {x: x == 0, y: true}; //TODO use end of timetable
     },
 }
 
@@ -220,9 +277,12 @@ ZWL.TrainDrawing = function (graph, train) {
     this.train = train;
     this.svg = this.graph.trainbox.group()
         .maskWith(this.graph.pastblur.mask)
-        .addClass('trainline').addClass('train' + train.info.nr)
+        .addClass('trainlineg').addClass('train' + train.info.nr)
         .attr('title', train.info.name);
-    this.trainline = this.svg.polyline([[-1,-1]]).attr('title', this.train.info.name);
+
+    // invisible, thicker line to allow easier pointing
+    this.trainlinebg = this.svg.polyline([[-1,-1]]).addClass('trainlinebg');
+    this.trainline = this.svg.polyline([[-1,-1]]).addClass('trainline');
     this.redraw();
 }
 
@@ -241,6 +301,7 @@ ZWL.TrainDrawing.prototype = {
                                  this.graph.display.time2y(tt[elm]['dep_real'])]);
 
                 this.trainline.plot(points);
+                this.trainlinebg.plot(points);
                 laststop = tt[elm];
             }
         }

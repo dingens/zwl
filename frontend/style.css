@@ -6,7 +6,8 @@ line, polyline, path { stroke: black; stroke-width: 1px; fill: none; }
 
 /* specific elements of zwl image */
 
-.trainline polyline { stroke: #444; stroke-width: 1.5px; }
+.trainline { stroke: #444; stroke-width: 1.5px; }
+.trainlinebg { stroke-width: 15px; stroke-opacity: 0; stroke-linecap:round; }
 
 .nowmarker { stroke: #bb0; stroke-width: 2px; }
 .pastblur { stroke: none; fill: white; }
@@ -15,3 +16,8 @@ line, polyline, path { stroke: black; stroke-width: 1px; fill: none; }
 .trainboxframe { stroke: black; stroke-width: 1px; fill: white; }
 
 .locaxis text { text-anchor: middle; }
+
+
+.timeaxis { cursor: -webkit-grab; cursor: grab; }
+.timeaxis.grabbing { cursor: -webkit-grabbing; cursor: grabbing; }
+.timeaxis-bg { fill: white; }
