@@ -127,12 +127,13 @@ ZWL.Graph.prototype = {
 
         this.pastblur.past
             .size(this.drawwidth, this.display.time2y(this.display.now))
+            .move(this.pos2x(0), 0);
         this.pastblur.future
             .size(this.drawwidth, 999999)
-            .move(0, this.display.time2y(this.display.now));
+            .move(this.pos2x(0), this.display.time2y(this.display.now));
 
-        this.nowmarker.plot(0,this.display.time2y(this.display.now),
-                            this.drawwidth,this.display.time2y(this.display.now));
+        this.nowmarker.plot(this.pos2x(0),this.display.time2y(this.display.now),
+                            this.pos2x(0)+this.drawwidth,this.display.time2y(this.display.now));
 
         this.fetch_trains();
         for ( var tid in this.trains ) {
@@ -163,13 +164,13 @@ ZWL.Graph.prototype = {
     pos2x: function (id) {
         // allow values like xstart and xend as input
         if ( typeof(id) == 'number')
-            return id*this.drawwidth;
+            return (id-this.xstart)*this.drawwidth;
 
         var elm;
         for ( var i in this.strecke.elements ) {
             elm = this.strecke.elements[i];
             if ( elm.id == id )
-                return elm.pos * this.drawwidth;
+                return (elm.pos-this.xstart) * this.drawwidth;
         }
         console.error('no such stop: ' + id);
     },
