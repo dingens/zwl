@@ -4,7 +4,7 @@ ZWL.Display = function (element, graphinfo, timezoom) {
     this.svg = SVG(element).translate(0.5, 0.5);
                             /* put lines in the middle of pixels -> sharper*/
 
-    this.timezoom = defaultval(timezoom, .2); // pixels per second
+    this.timezoom = defaultval(timezoom, .25); // pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
     this.now = 13092300;
     this.starttime = this.now - 600;
@@ -183,13 +183,27 @@ ZWL.TimeAxis = function ( display ) {
     this.display = display;
 
     this.mask = this.display.svg.rect();
-    this.svg = this.display.svg.group().addClass('timeaxis').clipWith(this.mask);
-    this.axis = this.svg.group().draggable(this.draggableconstraints);
+    this.svg = this.display.svg.group().clipWith(this.mask)
+                                       .addClass('timeaxis');
+    this.axis = this.svg.group().draggable(this.draggableconstraints)
+                                .addClass('axis');
     this.bg = this.axis.rect().addClass('timeaxis-bg');
+
+    this.zoombuttons = {}
+    this.zoombuttons.g = this.svg.group().addClass('zoombuttons');
+    this.zoombuttons.bg = this.zoombuttons.g.rect(55,30).addClass('bg');
+    this.zoombuttons.plus = this.zoombuttons.g.group()
+        .add(this.svg.rect(20,20))
+        .add(this.svg.path('M 3,10 L 17,10 M 10,3 L 10,17'))
+        .click(function() { display.timezoom *= Math.SQRT2; display.redraw(); });
+    this.zoombuttons.minus = this.zoombuttons.g.group()
+        .add(this.svg.rect(20,20))
+        .add(this.svg.path('M 3,10 L 17,10'))
+        .click(function() { display.timezoom /= Math.SQRT2; display.redraw(); });
 
     var timeaxis = this; // `this` is overridden in dragging functions
     this.axis.dragstart = function (delta, event) {
-        timeaxis.svg.addClass('grabbing');
+        this.addClass('grabbing');
     }
     this.axis.dragmove = function (delta, event) {
         //display.starttime -= display.timezoom*delta.y;
@@ -198,7 +212,7 @@ ZWL.TimeAxis = function ( display ) {
         timeaxis.display.timechange();
     };
     this.axis.dragend = function (delta, event) {
-        timeaxis.svg.removeClass('grabbing');
+        this.removeClass('grabbing');
         timeaxis.display.redraw();
     };
 
@@ -257,6 +271,10 @@ ZWL.TimeAxis.prototype = {
                 this.times[time].remove();
                 delete this.times[time];
             }
+
+        this.zoombuttons.plus.translate(this.width-50,this.height-25);
+        this.zoombuttons.minus.translate(this.width-25,this.height-25);
+        this.zoombuttons.bg.translate(this.width-55,this.height-30);
     },
 
     draggableconstraints: function (x, y) {
