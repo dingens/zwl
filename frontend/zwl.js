@@ -10,11 +10,11 @@ ZWL.Display = function (element, graphinfo, timezoom) {
     this.starttime = this.now - 600;
     this.endtime = null;
     
+    this.timeaxis = new ZWL.TimeAxis(this);
     // TODO: parse this
     this.graphs = [
         new ZWL.Graph(this, 'ring-xde', {})
     ];
-    this.timeaxis = new ZWL.TimeAxis(this);
 
     this.sizechange($(document).width()-25, 700);
 };
@@ -27,10 +27,13 @@ ZWL.Display.prototype = {
         this.endtime = this.starttime + this.height/this.timezoom;
 
         //TODO calculate useful arrangement
-        this.graphs[0].sizechange(30,30,width-120,height-60);
+        this.graphs[0].sizechange(60,30,width-200,height-60);
         this.timeaxis.sizechange(width-80,30, 75,height-60);
     },
     timechange: function () {
+        // code to be executed whenever `starttime` changes
+        // this runs lots of times while the user moves the time axis, so keep it short!
+
         this.graphs[0].timechange();
         this.timeaxis.timechange();
         this.endtime = this.starttime + this.height/this.timezoom;
@@ -59,10 +62,10 @@ ZWL.Graph = function (display, strecke, viewcfg) {
     this.svg = this.display.svg.group();
 
     this.trainboxframe = this.svg.rect(0,0).addClass('trainboxframe');
-    this.trainboxcliprect = this.svg.rect(0,0);
-    this.trainboxclip = this.svg.clip().add(this.trainboxcliprect);
+    //this.trainboxcliprect = this.svg.rect(0,0);
+    //this.trainboxclip = this.svg.clip().add(this.trainboxcliprect);
     this.trainbox = this.svg.group().addClass('trainbox')
-                                    .clipWith(this.trainboxclip);
+                                    ;//.clipWith(this.trainboxclip);
 
     this.nowmarker = this.trainbox.line(-1,-1,-1,-1).addClass('nowmarker');
 
@@ -81,7 +84,7 @@ ZWL.Graph = function (display, strecke, viewcfg) {
         var loc = this.strecke.elements[i];
         if ( 'code' in loc ) {
             this.locaxis[loc.id] = this.locaxis.g.plain(loc.code)
-                .attr('title', loc.name).move(-100,-100);
+                .attr('title', loc.name).move(-100,-100); // don't display yet
         }
     }
 };
@@ -98,13 +101,11 @@ ZWL.Graph.prototype = {
         this.redraw();
     },
     timechange: function () {
-        // code to be executed whenever the display's `starttime` changes
-
         this.trainbox.translate(this.x, this.y - this.display.time2y(this.display.starttime));
 
-        this.trainboxcliprect
-            .size(this.viswidth,this.visheight)
-            .move(0,this.display.time2y(this.display.starttime));
+//        this.trainboxcliprect
+//            .size(this.viswidth,this.visheight)
+//            .move(0,this.display.time2y(this.display.starttime));
     },
     redraw: function () {
         // size of internal drawing (covering the whole strecke)
@@ -153,6 +154,7 @@ ZWL.Graph.prototype = {
             this.trains = {
                 406: {'info':ice406, 'status': 'new'},
                 2342: {'info':ire2342, 'status': 'new'},
+                12345: {'info':rb12345, 'status': 'new'},
             }
         } else {
             for ( var tid in this.trains ) {
@@ -177,6 +179,8 @@ ZWL.Graph.prototype = {
     measures: {
         locaxisoverbox: 30,
         locaxisunderbox: 15,
+        trainlabelxmargin: 5,
+        trainlabelymargin: 2,
     }
 };
 
@@ -293,15 +297,30 @@ ZWL.TrainInfo = function (gattung, nr, timetable, comment) {
 
 ZWL.TrainDrawing = function (graph, train) {
     this.graph = graph;
+    this.display = graph.display;
     this.train = train;
     this.svg = this.graph.trainbox.group()
-        .maskWith(this.graph.pastblur.mask)
         .addClass('trainlineg').addClass('train' + train.info.nr)
-        .attr('title', train.info.name);
+        .attr('title', train.info.name)
+        .mouseover(function(){ this.front(); });
 
-    // invisible, thicker line to allow easier pointing
-    this.trainlinebg = this.svg.polyline([[-1,-1]]).addClass('trainlinebg');
-    this.trainline = this.svg.polyline([[-1,-1]]).addClass('trainline');
+    // bg = invisible, thicker line to allow easier pointing
+    this.trainlinebg = this.svg.polyline([[-1,-1]]).addClass('trainlinebg')
+        .maskWith(this.graph.pastblur.mask);
+    this.trainline = this.svg.polyline([[-1,-1]]).addClass('trainline')
+        .maskWith(this.graph.pastblur.mask);
+
+    this.label = {}
+    this.label.g = this.svg.group().addClass('trainlabel');
+    this.label.nr = this.label.g.plain(this.train.info.nr)
+        .move(this.graph.measures.trainlabelxmargin,
+              this.graph.measures.trainlabelymargin);
+    var bb = this.label.nr.bbox();
+    this.label.box = this.label.g.rect(
+        bb.width+this.graph.measures.trainlabelxmargin*2,
+        bb.height+this.graph.measures.trainlabelymargin*2).back();
+    this.label.entry = this.svg.use(this.label.g);
+    this.label.exit = this.svg.use(this.label.g);
     this.redraw();
 }
 
@@ -313,26 +332,100 @@ ZWL.TrainDrawing.prototype = {
             if ( tt[elm]['loc'] ) {
                 if ( tt[elm]['arr_real'] != undefined )
                     points.push([this.graph.pos2x(tt[elm]['loc']),
-                                 this.graph.display.time2y(tt[elm]['arr_real'])]);
+                                 this.display.time2y(tt[elm]['arr_real'])]);
                 if ( tt[elm]['dep_real'] != undefined &&
                      tt[elm]['dep_real'] != tt[elm]['arr_real'] )
                     points.push([this.graph.pos2x(tt[elm]['loc']),
-                                 this.graph.display.time2y(tt[elm]['dep_real'])]);
+                                 this.display.time2y(tt[elm]['dep_real'])]);
 
                 this.trainline.plot(points);
                 this.trainlinebg.plot(points);
                 laststop = tt[elm];
             }
         }
+
+        this.reposition_label('entry', this.label.entry);
+        this.reposition_label('exit', this.label.exit);
     },
+    reposition_label: function (mode, label) {
+        // names of variables within this function always refer to the
+        // mode=entry case but apply to the mode=exit case as well
+
+        if ( mode != 'entry' && mode != 'exit' )
+            return console.error('no such mode: ' + mode);
+
+        var tt = this.train.info.timetable;
+
+        var firststop, firststop_time, secondstop, secondstop_time;
+        if ( mode == 'entry') {
+            firststop = tt[0];
+            firststop_time = firststop.dep_real;
+            secondstop = tt[2]; // tt[1] is strecke
+            secondstop_time = secondstop.arr_real;
+        } else if ( mode == 'exit') {
+            firststop = tt[tt.length-1];
+            firststop_time = firststop.arr_real;
+            secondstop = tt[tt.length-3];
+            secondstop_time = secondstop.dep_real;
+        }
+
+        var x, y, orientation;
+        // simple case: train start/stops within graph
+        var firststop_pos = this.graph.strecke.getElement(firststop.loc).pos;
+        var secondstop_pos = this.graph.strecke.getElement(secondstop.loc).pos;
+        if ( firststop_time.within(this.display.starttime, this.display.endtime)
+             && firststop_pos.within(this.graph.xstart, this.graph.xend) ) {
+            x = this.graph.pos2x(firststop_pos);
+            y = this.display.time2y(firststop_time);
+            orientation = (firststop_pos < secondstop_pos) ? 'left' : 'right';
+        }
+
+        if ( x == null || y == null || orientation == null ) {
+            console.log('no position for ' + this.train.info.nr + ' ' + mode
+                        + ' label defined, removing');
+            label.translate(-100, -100);
+        }
+
+        // avoid lines "between pixels"
+        x = Math.floor(x); y = Math.floor(y);
+        var bb = label.bbox();
+        if ( orientation == 'left') {
+            label.translate(x-bb.width-5,y-bb.height/2);
+        } else if ( orientation == 'right') {
+            label.translate(x+5,y-bb.height/2);
+        }
+    },
+
     remove: function () {
         this.svg.remove();
     },
 }
 
+ZWL.LineConfiguration = function(name, elements) {
+    this.name = name;
+    this.elements = elements;
+}
+
+ZWL.LineConfiguration.prototype = {
+    getElement: function ( id ) {
+        for ( var i in this.elements )
+            if ( this.elements[i].id == id )
+                return this.elements[i];
+        return undefined;
+    },
+}
+
+// HELPERS
 
 function defaultval(val, def) {
     return val === undefined ? def : val;
+}
+
+function coalesce() {
+    for(var i in arguments)
+        if (arguments[i] !== null && arguments[i] !== undefined)
+            return arguments[i];
+    return null;
 }
 
 function timeformat (time, format) {
@@ -343,18 +436,34 @@ function timeformat (time, format) {
         console.error('invalid format given');
 }
 
+if (!Number.between) {
+    Object.defineProperty(Number.prototype, 'between', {
+        enumerable: false,
+        value: function (a, b) {
+            return this > a && this < b;
+        },
+    });
+}
+
+if (!Number.within) {
+    Object.defineProperty(Number.prototype, 'within', {
+        enumerable: false,
+        value: function (a, b) {
+            return this >= a && this <= b;
+        },
+    });
+}
+
 // some data for playing around (later to be fetched from the server)
-ringxde = {
-    'elements': [
-        {'type':'bhf', 'id':'XDE#1', 'pos':0, code:'XDE', 'name':'Derau'},
-        {'type':'str', 'id':'XDE#1_XCE#1', 'pos':.15, 'length':3000, 'tracks':2},
-        {'type':'bhf', 'id':'XCE#1', 'pos':.3, code:'XCE', 'name':'Cella'},
-        {'type':'str', 'id':'XCE#1_XLG#1', 'pos':.4, 'length':2000, 'tracks':2},
-        {'type':'bhf', 'id':'XLG#1', 'pos':.5, code:'XLE', 'name':'Walfdorf'},
-        {'type':'str', 'id':'XLG#1_XDE#2', 'pos':.75, 'length':5000, 'tracks':2},
-        {'type':'bhf', 'id':'XDE#2', 'pos':1, code:'XDE', 'name':'Derau'},
-    ],
-};
+ringxde = new ZWL.LineConfiguration('Ring (ab Derau)', [
+    {'type':'bhf', 'id':'XDE#1', 'pos':0, code:'XDE', 'name':'Derau'},
+    {'type':'str', 'id':'XDE#1_XCE#1', 'pos':.15, 'length':3000, 'tracks':2},
+    {'type':'bhf', 'id':'XCE#1', 'pos':.3, code:'XCE', 'name':'Cella'},
+    {'type':'str', 'id':'XCE#1_XLG#1', 'pos':.4, 'length':2000, 'tracks':2},
+    {'type':'bhf', 'id':'XLG#1', 'pos':.5, code:'XLG', 'name':'Leopoldgrün'},
+    {'type':'str', 'id':'XLG#1_XDE#2', 'pos':.75, 'length':5000, 'tracks':2},
+    {'type':'bhf', 'id':'XDE#2', 'pos':1, code:'XDE', 'name':'Derau'},
+]);
 ice406 = new ZWL.TrainInfo('ICE', 406, [
     {'loc':'XDE#1', 'arr_real':null, 'dep_real':13091820},
     {'str':'XDE#1_XCE#1'},
@@ -363,9 +472,14 @@ ice406 = new ZWL.TrainInfo('ICE', 406, [
     {'loc':'XLG#1', 'arr_real':null, 'dep_real':13092300},
     {'str':'XLG#1_XDE#2'},
     {'loc':'XDE#2', 'arr_real':13092600, 'dep_real':null},
-])
+]);
 ire2342 = new ZWL.TrainInfo('IRE', 2342, [
     {'loc':'XDE#2', 'arr_real':null, 'dep_real':13092240},
     {'str':'XLG#1_XDE#2'},
-    {'loc':'XLG#1', 'arr_real':null, 'dep_real':13092540},
-])
+    {'loc':'XLG#1', 'arr_real':13092540, 'dep_real':13092540},
+]);
+rb12345 = new ZWL.TrainInfo('RB', 12345, [
+    {'loc':'XDE#1', 'arr_real':null, 'dep_real':13091800},
+    {'str':'XLG#1_XDE#2'},
+    {'loc':'XDE#2', 'arr_real':13092260, 'dep_real':null},
+]);
