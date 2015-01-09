@@ -292,6 +292,7 @@ ZWL.TrainDrawing = function (graph, train) {
     this.graph = graph;
     this.display = graph.display;
     this.train = train;
+    this.points = null;
     this.svg = this.graph.trainbox.group()
         .addClass('trainlineg').addClass('train' + train.info.nr)
         .attr('title', train.info.name)
@@ -323,22 +324,26 @@ ZWL.TrainDrawing = function (graph, train) {
 ZWL.TrainDrawing.prototype = {
     redraw: function () {
         var tt = this.train.info.timetable;
-        var points = [];
+        this.points = [];
         for ( var elm in tt ) {
             if ( tt[elm]['loc'] ) {
                 if ( tt[elm]['arr_real'] != undefined )
-                    points.push([this.graph.pos2x(tt[elm]['loc']),
-                                 this.display.time2y(tt[elm]['arr_real'])]);
+                    this.points.push([tt[elm]['loc'],
+                                      tt[elm]['arr_real']]);
                 if ( tt[elm]['dep_real'] != undefined &&
                      tt[elm]['dep_real'] != tt[elm]['arr_real'] )
-                    points.push([this.graph.pos2x(tt[elm]['loc']),
-                                 this.display.time2y(tt[elm]['dep_real'])]);
+                    this.points.push([tt[elm]['loc'],
+                                      tt[elm]['dep_real']]);
 
-                this.trainline.plot(points);
-                this.trainlinebg.plot(points);
                 laststop = tt[elm];
             }
         }
+
+        var coordinates = this.points.map(function (p) {
+            return [this.graph.pos2x(p[0]), this.display.time2y(p[1])];
+        }, this);
+        this.trainline.plot(coordinates);
+        this.trainlinebg.plot(coordinates);
 
         this.reposition_label('entry', this.label.entry);
         this.reposition_label('exit', this.label.exit);
@@ -408,6 +413,7 @@ ZWL.LineConfiguration.prototype = {
         for ( var i in this.elements )
             if ( this.elements[i].id == id )
                 return this.elements[i];
+        console.error('no such element', id);
         return undefined;
     },
 }
