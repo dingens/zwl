@@ -77,15 +77,31 @@ ZWL.Graph = function (display, strecke, viewcfg) {
 
     this.locaxis = {};
     this.locaxis.g = this.svg.group().addClass('locaxis');
-    this.locaxis.bottom = this.svg.use(this.locaxis.g);
+    this.locaxis.labels = this.locaxis.g.group();
+    this.locaxis.bottom = this.svg.use(this.locaxis.labels);
 
     for ( var i in this.strecke.elements ) {
         var loc = this.strecke.elements[i];
         if ( 'code' in loc ) {
-            this.locaxis[loc.id] = this.locaxis.g.plain(loc.code)
+            this.locaxis[loc.id] = this.locaxis.labels.plain(loc.code)
                 .attr('title', loc.name).move(-100,-100); // don't display yet
         }
     }
+
+    //TODO: provisory. should be draggable.
+    var that = this;
+    this.locaxis.leftleftbutton = this.locaxis.g.group().addClass('button')
+        .add(this.svg.rect(20,20)).translate(-60,0)
+        .add(this.svg.path('M 16,4 L 4,10 L 16,16 Z'))
+        .click(function() { that.xstart +=.05; that.display.redraw(); });
+    this.locaxis.leftrightbutton = this.locaxis.g.group().addClass('button')
+        .add(this.svg.rect(20,20)).translate(-35,0)
+        .add(this.svg.path('M 4,4 L 16,10 L 4,16 Z'))
+        .click(function() { that.xstart -=.05; that.display.redraw(); });
+    this.locaxis.rightleftbutton = this.locaxis.g.use(this.locaxis.leftleftbutton)
+        .click(function() { that.xend +=.05; that.display.redraw(); });
+    this.locaxis.rightrightbutton = this.locaxis.g.use(this.locaxis.leftrightbutton)
+        .click(function() { that.xend -=.05; that.display.redraw(); });
 };
 
 ZWL.Graph.prototype = {
@@ -97,6 +113,10 @@ ZWL.Graph.prototype = {
         this.y = y;
         this.viswidth = width;
         this.visheight = height;
+
+        this.locaxis.rightleftbutton.translate(this.viswidth+65);
+        this.locaxis.rightrightbutton.translate(this.viswidth+65);
+
         this.redraw();
     },
     timechange: function () {

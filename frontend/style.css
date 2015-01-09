@@ -21,6 +21,8 @@ line, polyline, path { stroke: black; stroke-width: 1px; fill: none; }
 .trainboxframe { stroke: black; stroke-width: 1px; fill: white; }
 
 .locaxis text { text-anchor: middle; }
+.locaxis .button rect { fill: white; stroke: black; stroke-width: 1px; }
+.locaxis .button path { fill: black; }
 
 
 .timeaxis .axis { cursor: -webkit-grab; cursor: grab; }
