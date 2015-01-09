@@ -7,9 +7,11 @@ line, polyline, path { stroke: black; stroke-width: 1px; fill: none; }
 /* specific elements of zwl image */
 
 .trainline { stroke: #444; stroke-width: 1.5px; }
-.trainlinebg { stroke: white; stroke-width: 15px; stroke-opacity: 0; stroke-linecap:round; }
+.trainlinebg { stroke: blue; stroke-width: 15px; stroke-opacity: .01; stroke-linecap:round; }
+.trainlineg:hover .trainline, .trainlineg.selected .trainline { stroke: black; stroke-width: 2px; }
+.trainlineg:hover .trainlabel rect, .trainlineg.selected .trainlabel rect { fill: black; stroke: black; }
 
-.trainlabel rect { fill: black; fill-opacity: .8; stroke: black; }
+.trainlabel rect { fill: #444; opacity: .9; stroke: #444; }
 .trainlabel text { fill: white; }
 
 .nowmarker { stroke: #bb0; stroke-width: 2px; }

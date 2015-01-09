@@ -62,10 +62,9 @@ ZWL.Graph = function (display, strecke, viewcfg) {
     this.svg = this.display.svg.group();
 
     this.trainboxframe = this.svg.rect(0,0).addClass('trainboxframe');
-    //this.trainboxcliprect = this.svg.rect(0,0);
-    //this.trainboxclip = this.svg.clip().add(this.trainboxcliprect);
-    this.trainbox = this.svg.group().addClass('trainbox')
-                                    ;//.clipWith(this.trainboxclip);
+    this.traincliprect = this.svg.rect(0,0);
+    this.trainclip = this.svg.clip().add(this.traincliprect);
+    this.trainbox = this.svg.group().addClass('trainbox');
 
     this.nowmarker = this.trainbox.line(-1,-1,-1,-1).addClass('nowmarker');
 
@@ -103,9 +102,9 @@ ZWL.Graph.prototype = {
     timechange: function () {
         this.trainbox.translate(this.x, this.y - this.display.time2y(this.display.starttime));
 
-//        this.trainboxcliprect
-//            .size(this.viswidth,this.visheight)
-//            .move(0,this.display.time2y(this.display.starttime));
+        this.traincliprect
+            .size(this.viswidth,this.visheight)
+            .move(0,this.display.time2y(this.display.starttime));
     },
     redraw: function () {
         // size of internal drawing (covering the whole strecke)
@@ -168,13 +167,8 @@ ZWL.Graph.prototype = {
         if ( typeof(id) == 'number')
             return (id-this.xstart)*this.drawwidth;
 
-        var elm;
-        for ( var i in this.strecke.elements ) {
-            elm = this.strecke.elements[i];
-            if ( elm.id == id )
-                return (elm.pos-this.xstart) * this.drawwidth;
-        }
-        console.error('no such stop: ' + id);
+        var elm = this.strecke.getElement(id);
+        return (elm.pos-this.xstart) * this.drawwidth;
     },
     measures: {
         locaxisoverbox: 30,
@@ -211,7 +205,6 @@ ZWL.TimeAxis = function ( display ) {
         this.addClass('grabbing');
     }
     this.axis.dragmove = function (delta, event) {
-        //display.starttime -= display.timezoom*delta.y;
         var old = timeaxis.display.starttime;
         timeaxis.display.starttime = timeaxis.display.y2time((-this.transform().y));
         timeaxis.display.timechange();
@@ -302,12 +295,15 @@ ZWL.TrainDrawing = function (graph, train) {
     this.svg = this.graph.trainbox.group()
         .addClass('trainlineg').addClass('train' + train.info.nr)
         .attr('title', train.info.name)
-        .mouseover(function(){ this.front(); });
+        .mouseover(function(){ console.log('mouseover',this);this.front(); this.addClass('selected')})
+        .mouseout(function(){ this.removeClass('selected')});
 
+    this.trainline = this.svg.polyline([[-1,-1]]).addClass('trainline')
+        .clipWith(this.graph.trainclip)
+        .maskWith(this.graph.pastblur.mask);
     // bg = invisible, thicker line to allow easier pointing
     this.trainlinebg = this.svg.polyline([[-1,-1]]).addClass('trainlinebg')
-        .maskWith(this.graph.pastblur.mask);
-    this.trainline = this.svg.polyline([[-1,-1]]).addClass('trainline')
+        .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastblur.mask);
 
     this.label = {}
@@ -408,6 +404,7 @@ ZWL.LineConfiguration = function(name, elements) {
 
 ZWL.LineConfiguration.prototype = {
     getElement: function ( id ) {
+        //TODO: speed this up by caching this in an object
         for ( var i in this.elements )
             if ( this.elements[i].id == id )
                 return this.elements[i];
