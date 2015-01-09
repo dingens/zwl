@@ -16,11 +16,22 @@ ZWL.Display = function (element, graphinfo, timezoom) {
         new ZWL.Graph(this, 'ring-xde', {})
     ];
 
-    this.sizechange($(document).width()-25, 700);
+    this.sizechange();
+    that = this;
+    $(window).resize(function () {
+        window.clearTimeout(that.resizetimeout);
+        that.resizetimeout = window.setTimeout(
+            function () { that.sizechange(); },
+            250);
+    });
 };
 
 ZWL.Display.prototype = {
     sizechange: function (width,height) {
+        if ( width == undefined && height == undefined) {
+            width = $(window).width() - 25;
+            height = 700;
+        }
         this.width = width;
         this.height = height;
         this.svg.size(width,height);
@@ -66,7 +77,8 @@ ZWL.Graph = function (display, strecke, viewcfg) {
     this.trainclip = this.svg.clip().add(this.traincliprect);
     this.trainbox = this.svg.group().addClass('trainbox');
 
-    this.nowmarker = this.trainbox.line(-1,-1,-1,-1).addClass('nowmarker');
+    this.nowmarker = this.trainbox.line(-1,-1,-1,-1).addClass('nowmarker')
+        .clipWith(this.trainclip);
 
     this.pastblur = {};
     this.pastblur.group = this.trainbox.group().addClass('pastblur');
@@ -316,8 +328,7 @@ ZWL.TrainDrawing = function (graph, train) {
     this.svg = this.graph.trainbox.group()
         .addClass('trainlineg').addClass('train' + train.info.nr)
         .attr('title', train.info.name)
-        .mouseover(function(){ console.log('mouseover',this);this.front(); this.addClass('selected')})
-        .mouseout(function(){ this.removeClass('selected')});
+        .mouseover(function(){ this.front(); });
 
     this.trainline = this.svg.polyline([[-1,-1]]).addClass('trainline')
         .clipWith(this.graph.trainclip)
