@@ -9,7 +9,7 @@ ZWL.Display = function (element, graphinfo, timezoom) {
     this.now = 13092300;
     this.starttime = this.now - 600;
     this.endtime = null;
-    
+
     this.timeaxis = new ZWL.TimeAxis(this);
     // TODO: parse this
     this.graphs = [
@@ -35,7 +35,7 @@ ZWL.Display.prototype = {
         this.width = width;
         this.height = height;
         this.svg.size(width,height);
-        this.endtime = this.starttime + this.height/this.timezoom;
+        this.endtime = this.starttime + (this.height-60)/this.timezoom;
 
         //TODO calculate useful arrangement
         this.graphs[0].sizechange(60,30,width-200,height-60);
@@ -47,7 +47,7 @@ ZWL.Display.prototype = {
 
         this.graphs[0].timechange();
         this.timeaxis.timechange();
-        this.endtime = this.starttime + this.height/this.timezoom;
+        this.endtime = this.starttime + (this.height-60)/this.timezoom;
 
     },
     redraw: function () {
@@ -137,6 +137,8 @@ ZWL.Graph.prototype = {
         this.traincliprect
             .size(this.viswidth,this.visheight)
             .move(0,this.display.time2y(this.display.starttime));
+
+        this.reposition_train_labels();
     },
     redraw: function () {
         // size of internal drawing (covering the whole strecke)
@@ -175,8 +177,14 @@ ZWL.Graph.prototype = {
             } else if ( train.status == 'new') {
                 train.drawing = new ZWL.TrainDrawing(this, train);
             } else if ( train.status == 'updated') {
-                train.drawing.redraw();
+                train.drawing.update();
             }
+        }
+    },
+    reposition_train_labels: function () {
+        for ( var tid in this.trains ) {
+            var train = this.trains[tid];
+            train.drawing.update();
         }
     },
     _fetch_trains_called: false,
@@ -232,18 +240,18 @@ ZWL.TimeAxis = function ( display ) {
         .add(this.svg.path('M 3,10 L 17,10'))
         .click(function() { display.timezoom /= Math.SQRT2; display.redraw(); });
 
-    var timeaxis = this; // `this` is overridden in dragging functions
+    var that = this; // `this` is overridden in dragging functions
     this.axis.dragstart = function (delta, event) {
         this.addClass('grabbing');
     }
     this.axis.dragmove = function (delta, event) {
-        var old = timeaxis.display.starttime;
-        timeaxis.display.starttime = timeaxis.display.y2time((-this.transform().y));
-        timeaxis.display.timechange();
+        var old = that.display.starttime;
+        that.display.starttime = that.display.y2time((-this.transform().y));
+        that.display.timechange();
     };
     this.axis.dragend = function (delta, event) {
         this.removeClass('grabbing');
-        timeaxis.display.redraw();
+        that.display.redraw();
     };
 
     this.times = {}
@@ -312,10 +320,11 @@ ZWL.TimeAxis.prototype = {
     },
 }
 
-ZWL.TrainInfo = function (gattung, nr, timetable, comment) {
+ZWL.TrainInfo = function (gattung, nr, timetable, direction, comment) {
     this.gattung = gattung;
     this.nr = nr;
     this.timetable = timetable;
+    this.direction = direction;
     this.comment = comment;
     this.name = this.gattung + ' ' + this.nr.toString();
 }
@@ -349,11 +358,11 @@ ZWL.TrainDrawing = function (graph, train) {
         bb.height+this.graph.measures.trainlabelymargin*2).back();
     this.label.entry = this.svg.use(this.label.g);
     this.label.exit = this.svg.use(this.label.g);
-    this.redraw();
+    this.update();
 }
 
 ZWL.TrainDrawing.prototype = {
-    redraw: function () {
+    update: function () {
         var tt = this.train.info.timetable;
         this.points = [];
         for ( var elm in tt ) {
@@ -370,6 +379,9 @@ ZWL.TrainDrawing.prototype = {
             }
         }
 
+        this.redraw();
+    },
+    redraw: function () {
         var coordinates = this.points.map(function (p) {
             return [this.graph.pos2x(p[0]), this.display.time2y(p[1])];
         }, this);
@@ -380,51 +392,88 @@ ZWL.TrainDrawing.prototype = {
         this.reposition_label('exit', this.label.exit);
     },
     reposition_label: function (mode, label) {
-        // names of variables within this function always refer to the
-        // mode=entry case but apply to the mode=exit case as well
-
         if ( mode != 'entry' && mode != 'exit' )
             return console.error('no such mode: ' + mode);
 
-        var tt = this.train.info.timetable;
-
-        var firststop, firststop_time, secondstop, secondstop_time;
+        var points;
         if ( mode == 'entry') {
-            firststop = tt[0];
-            firststop_time = firststop.dep_real;
-            secondstop = tt[2]; // tt[1] is strecke
-            secondstop_time = secondstop.arr_real;
+            points = this.points;
         } else if ( mode == 'exit') {
-            firststop = tt[tt.length-1];
-            firststop_time = firststop.arr_real;
-            secondstop = tt[tt.length-3];
-            secondstop_time = secondstop.dep_real;
+            // start searching in the other direction
+            points = this.points.slice().reverse();
         }
 
-        var x, y, orientation;
-        // simple case: train start/stops within graph
-        var firststop_pos = this.graph.strecke.getElement(firststop.loc).pos;
-        var secondstop_pos = this.graph.strecke.getElement(secondstop.loc).pos;
-        if ( firststop_time.within(this.display.starttime, this.display.endtime)
+        var x = y = orientation = null;
+
+        // first, check the simple case: train start/stops within graph
+        // this avoids calculating tons of intersections where there are none.
+        // (`firststop` refers to the last element in the `exit` case.)
+        var firststop_pos = this.graph.strecke.getElement(points[0][0]).pos;
+        if ( points[0][1].within(this.display.starttime, this.display.endtime)
              && firststop_pos.within(this.graph.xstart, this.graph.xend) ) {
+            console.log('simple', mode, this.train.info.name, points[0][1], this.display.endtime);
             x = this.graph.pos2x(firststop_pos);
-            y = this.display.time2y(firststop_time);
-            orientation = (firststop_pos < secondstop_pos) ? 'left' : 'right';
+            y = this.display.time2y(points[0][1]);
+            if ( mode == 'entry' )
+                orientation = this.train.info.direction == 'left' ? 'right' : 'left';
+            else
+                orientation = this.train.info.direction;
+        }
+        //TODO prevent execution of the else branch when the train is entirely outside the box
+        else {
+            var x1, y1, x2, y2, int_x, int_y;
+            var left_x = this.graph.pos2x(this.graph.xstart);
+            var right_x = this.graph.pos2x(this.graph.xend);
+            var top_y = this.display.time2y(this.display.starttime);
+            var bottom_y = this.display.time2y(this.display.endtime);
+
+            for ( var i = 1; i < this.points.length; i++ ) {
+                x1 = this.graph.pos2x(this.points[i-1][0]);
+                x2 = this.graph.pos2x(this.points[i][0]);
+                y1 = this.display.time2y(this.points[i-1][1]);
+                y2 = this.display.time2y(this.points[i][1]);
+                console.log('checking', mode, this.train.info.name, x1, y1, x2, y2);
+
+                // intersection with top / bottom / left / right edge, respectively
+                if ( mode == 'entry' ) {
+                    if ( int_x = intersecthorizseg(top_y, left_x, right_x, x1,y1,x2,y2) ) {
+                        x = int_x, y = top_y, orientation = 'top'; break;
+                    }
+                } else {
+                    if ( int_x = intersecthorizseg(bottom_y, left_x, right_x, x1,y1,x2,y2) ) {
+                        x = int_x, y = bottom_y, orientation = 'bottom'; break;
+                    }
+                }
+                if ( this.train.info.direction == 'right' ? mode == 'entry' : mode == 'exit' ) {
+                    if ( int_y = intersectvertseg(left_x, top_y, bottom_y, x1,y1,x2,y2) ) {
+                        x = left_x, y = int_y, orientation = 'left'; break;
+                    }
+                } else {
+                    if ( int_y = intersectvertseg(right_x, top_y, bottom_y, x1,y1,x2,y2) ) {
+                        x = right_x, y = int_y, orientation = 'right'; break;
+                    }
+                }
+            }
         }
 
         if ( x == null || y == null || orientation == null ) {
             console.log('no position for ' + this.train.info.nr + ' ' + mode
                         + ' label defined, removing');
-            label.translate(-100, -100);
-        }
-
-        // avoid lines "between pixels"
-        x = Math.floor(x); y = Math.floor(y);
-        var bb = label.bbox();
-        if ( orientation == 'left') {
-            label.translate(x-bb.width-5,y-bb.height/2);
-        } else if ( orientation == 'right') {
-            label.translate(x+5,y-bb.height/2);
+            label.translate(100, 100);
+        } else {
+            // avoid lines "between pixels"
+            //x = Math.floor(x); y = Math.floor(y);
+            console.log('draw', this.train.info.nr, x, y, orientation);
+            var bb = label.bbox();
+            if ( orientation == 'left') {
+                label.translate(x-bb.width-5,y-bb.height/2);
+            } else if ( orientation == 'right') {
+                label.translate(x+5,y-bb.height/2);
+            } else if ( orientation == 'top') {
+                label.translate(x-bb.width/2,y-bb.height-5);
+            } else if ( orientation == 'bottom') {
+                label.translate(x-bb.width/2,y+5);
+            }
         }
     },
 
@@ -488,6 +537,37 @@ if (!Number.within) {
     });
 }
 
+function intersecthorizseg(y, xa, xb, x1, y1, x2, y2) {
+    // Calculate the x coordinate of the point were the line segment between
+    // x1,y1 and x2,y2 intersects with the line segment from xa,y to xb,y.
+    // If they don't intersect, return null.
+    // It is required that xa < xb.
+
+    console.log('intersecthorizseg', y, xa, xb, x1, y1, x2, y2);
+
+    // avoid complex calculations when they clearly don't intersect
+    if ( Math.max(x1, x2) < xa || Math.min(x1, x2) > xb
+         || Math.max(y1, y2) < y || Math.min(y1, y2) > y)
+        return null;
+
+    // equation deduced from P(t) = (x1+t*(x2-x1), y1+t*(y2-y1))
+    var int_x = x1 + (y-y1)*(x2-x1)/(y2-y1);
+    if (int_x + 0.000001 < xa || int_x - 0.000001 > xb)
+        return null;
+
+    console.log('=> ' + int_x);
+    return int_x;
+}
+function intersectvertseg(x, ya, yb, x1, y1, x2, y2) {
+    // Calculate the y coordinate of the point were the line segment between
+    // x1,y1 and x2,y2 intersects with the line segment from x,ya to x,yb.
+    // If they don't intersect, return null.
+    // It is required that ya < yb.
+    console.log('intersectvertseg', x, ya, yb, x1, y1, x2, y2);
+    return intersecthorizseg(x, ya, yb, y1, x1, y2, x2);
+}
+
+
 // some data for playing around (later to be fetched from the server)
 ringxde = new ZWL.LineConfiguration('Ring (ab Derau)', [
     {'type':'bhf', 'id':'XDE#1', 'pos':0, code:'XDE', 'name':'Derau'},
@@ -506,14 +586,14 @@ ice406 = new ZWL.TrainInfo('ICE', 406, [
     {'loc':'XLG#1', 'arr_real':null, 'dep_real':13092300},
     {'str':'XLG#1_XDE#2'},
     {'loc':'XDE#2', 'arr_real':13092600, 'dep_real':null},
-]);
+], 'right');
 ire2342 = new ZWL.TrainInfo('IRE', 2342, [
     {'loc':'XDE#2', 'arr_real':null, 'dep_real':13092240},
     {'str':'XLG#1_XDE#2'},
     {'loc':'XLG#1', 'arr_real':13092540, 'dep_real':13092540},
-]);
+], 'left');
 rb12345 = new ZWL.TrainInfo('RB', 12345, [
     {'loc':'XDE#1', 'arr_real':null, 'dep_real':13091800},
     {'str':'XLG#1_XDE#2'},
     {'loc':'XDE#2', 'arr_real':13092260, 'dep_real':null},
-]);
+], 'right');
