@@ -35,11 +35,14 @@ ZWL.Display.prototype = {
         this.width = width;
         this.height = height;
         this.svg.size(width,height);
-        this.endtime = this.starttime + (this.height-60)/this.timezoom;
+        this.endtime = this.starttime + (this.height - this.measures.graphtopmargin
+                       - this.measures.graphbottommargin) / this.timezoom;
 
         //TODO calculate useful arrangement
-        this.graphs[0].sizechange(60,30,width-200,height-60);
-        this.timeaxis.sizechange(width-80,30, 75,height-60);
+        var innerheight = height - this.measures.graphtopmargin - this.measures.graphbottommargin
+        this.graphs[0].sizechange(60, this.measures.graphtopmargin,
+            width-200,innerheight);
+        this.timeaxis.sizechange(width-80,this.measures.graphtopmargin, 75,innerheight);
     },
     timechange: function () {
         // code to be executed whenever `starttime` changes
@@ -47,7 +50,8 @@ ZWL.Display.prototype = {
 
         this.graphs[0].timechange();
         this.timeaxis.timechange();
-        this.endtime = this.starttime + (this.height-60)/this.timezoom;
+        this.endtime = this.starttime + (this.height - this.measures.graphtopmargin
+                       - this.measures.graphbottommargin) / this.timezoom;
 
     },
     redraw: function () {
@@ -59,6 +63,10 @@ ZWL.Display.prototype = {
     },
     y2time: function (y) {
         return y / this.timezoom + this.epoch;
+    },
+    measures: {
+        graphtopmargin: 45,
+        graphbottommargin: 45,
     },
 };
 
@@ -90,13 +98,13 @@ ZWL.Graph = function (display, strecke, viewcfg) {
     this.locaxis = {};
     this.locaxis.g = this.svg.group().addClass('locaxis');
     this.locaxis.labels = this.locaxis.g.group();
-    this.locaxis.bottom = this.svg.use(this.locaxis.labels);
+    this.locaxis.bottom = this.svg.use(this.locaxis.labels).addClass('locaxis');
 
     for ( var i in this.strecke.elements ) {
         var loc = this.strecke.elements[i];
         if ( 'code' in loc ) {
             this.locaxis[loc.id] = this.locaxis.labels.plain(loc.code)
-                .attr('title', loc.name).move(-100,-100); // don't display yet
+                .attr('title', loc.name);
         }
     }
 
@@ -123,11 +131,11 @@ ZWL.Graph.prototype = {
         // position and dimensions of visible area
         this.x = x;
         this.y = y;
-        this.viswidth = width;
-        this.visheight = height;
+        this.boxwidth = width;
+        this.boxheight = height;
 
-        this.locaxis.rightleftbutton.translate(this.viswidth+65);
-        this.locaxis.rightrightbutton.translate(this.viswidth+65);
+        this.locaxis.rightleftbutton.translate(this.boxwidth+65);
+        this.locaxis.rightrightbutton.translate(this.boxwidth+65);
 
         this.redraw();
     },
@@ -135,24 +143,24 @@ ZWL.Graph.prototype = {
         this.trainbox.translate(this.x, this.y - this.display.time2y(this.display.starttime));
 
         this.traincliprect
-            .size(this.viswidth,this.visheight)
+            .size(this.boxwidth,this.boxheight)
             .move(0,this.display.time2y(this.display.starttime));
 
         this.reposition_train_labels();
     },
     redraw: function () {
         // size of internal drawing (covering the whole strecke)
-        this.drawwidth = this.viswidth / (this.xend-this.xstart)
+        this.drawwidth = this.boxwidth / (this.xend-this.xstart)
         this.trainboxframe
-            .size(this.viswidth, this.visheight)
+            .size(this.boxwidth, this.boxheight)
             .move(this.x, this.y)
             .back();
 
         this.timechange();
 
         this.locaxis.g.translate(this.x, this.y-this.measures.locaxisoverbox);
-        this.locaxis.bottom.translate(0, this.visheight
-            + this.measures.locaxisoverbox + this.measures.locaxisunderbox);
+        this.locaxis.bottom.translate(this.x, this.y + this.boxheight
+            + this.measures.locaxisunderbox);
         for ( var i in this.strecke.elements ) {
             var loc = this.strecke.elements[i];
             if ( 'code' in loc )
@@ -211,8 +219,8 @@ ZWL.Graph.prototype = {
         return (elm.pos-this.xstart) * this.drawwidth;
     },
     measures: {
-        locaxisoverbox: 30,
-        locaxisunderbox: 15,
+        locaxisoverbox: 45,
+        locaxisunderbox: 30,
         trainlabelxmargin: 5,
         trainlabelymargin: 2,
     }
@@ -411,7 +419,6 @@ ZWL.TrainDrawing.prototype = {
         var firststop_pos = this.graph.strecke.getElement(points[0][0]).pos;
         if ( points[0][1].within(this.display.starttime, this.display.endtime)
              && firststop_pos.within(this.graph.xstart, this.graph.xend) ) {
-            console.log('simple', mode, this.train.info.name, points[0][1], this.display.endtime);
             x = this.graph.pos2x(firststop_pos);
             y = this.display.time2y(points[0][1]);
             if ( mode == 'entry' )
@@ -432,7 +439,6 @@ ZWL.TrainDrawing.prototype = {
                 x2 = this.graph.pos2x(this.points[i][0]);
                 y1 = this.display.time2y(this.points[i-1][1]);
                 y2 = this.display.time2y(this.points[i][1]);
-                console.log('checking', mode, this.train.info.name, x1, y1, x2, y2);
 
                 // intersection with top / bottom / left / right edge, respectively
                 if ( mode == 'entry' ) {
@@ -462,7 +468,7 @@ ZWL.TrainDrawing.prototype = {
             label.translate(100, 100);
         } else {
             // avoid lines "between pixels"
-            //x = Math.floor(x); y = Math.floor(y);
+            x = Math.floor(x); y = Math.floor(y);
             console.log('draw', this.train.info.nr, x, y, orientation);
             var bb = label.bbox();
             if ( orientation == 'left') {
@@ -543,8 +549,6 @@ function intersecthorizseg(y, xa, xb, x1, y1, x2, y2) {
     // If they don't intersect, return null.
     // It is required that xa < xb.
 
-    console.log('intersecthorizseg', y, xa, xb, x1, y1, x2, y2);
-
     // avoid complex calculations when they clearly don't intersect
     if ( Math.max(x1, x2) < xa || Math.min(x1, x2) > xb
          || Math.max(y1, y2) < y || Math.min(y1, y2) > y)
@@ -555,7 +559,6 @@ function intersecthorizseg(y, xa, xb, x1, y1, x2, y2) {
     if (int_x + 0.000001 < xa || int_x - 0.000001 > xb)
         return null;
 
-    console.log('=> ' + int_x);
     return int_x;
 }
 function intersectvertseg(x, ya, yb, x1, y1, x2, y2) {
@@ -563,7 +566,6 @@ function intersectvertseg(x, ya, yb, x1, y1, x2, y2) {
     // x1,y1 and x2,y2 intersects with the line segment from x,ya to x,yb.
     // If they don't intersect, return null.
     // It is required that ya < yb.
-    console.log('intersectvertseg', x, ya, yb, x1, y1, x2, y2);
     return intersecthorizseg(x, ya, yb, y1, x1, y2, x2);
 }
 
