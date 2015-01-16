@@ -1,5 +1,30 @@
 ZWL = {};
 
+/*
+Code layout remarks
+===================
+
+vocabulary notes.
+* graph: a diagram
+* line: a concatenation of stations and rail lines, and information about
+  these elements. Corresponds roughly to German "Strecke"
+* path: the image drawn inside a graph for one train. Must not be confused with `line`, see above.
+
+class hierarchy.
+* ZWL.Display is the main class. It contains all other elements, manages the
+  overall layout and keeps the time.
+* ZWL.TimeAxis draws a draggable time axis. By dragging it the time frame
+  displayed in the graphs can be changed.
+* ZWL.Graph is one graph of one line or line segment, containing the names of
+  stations on the x axis and the train paths inside the graph. The portion of
+  the line that is displayed can be varied. It does not modify time, only read
+  the value set in Display by TimeAxis.
+* ZWL.TrainDrawing is the class that maintains and draws one train path,
+  updating it if the timetable changes etc.
+
+*/
+
+
 ZWL.Display = function (element, graphinfo, timezoom) {
     this.svg = SVG(element).translate(0.5, 0.5);
                             /* put lines in the middle of pixels -> sharper*/
@@ -11,12 +36,13 @@ ZWL.Display = function (element, graphinfo, timezoom) {
     this.endtime = null;
 
     this.timeaxis = new ZWL.TimeAxis(this);
-    // TODO: parse this
+    // TODO: generate dynamically using `graphinfo`
     this.graphs = [
         new ZWL.Graph(this, 'ring-xde', {})
     ];
 
     this.sizechange();
+    // avoid resizing tons of times while the user drags the window
     that = this;
     $(window).resize(function () {
         window.clearTimeout(that.resizetimeout);
@@ -38,7 +64,7 @@ ZWL.Display.prototype = {
         this.endtime = this.starttime + (this.height - this.measures.graphtopmargin
                        - this.measures.graphbottommargin) / this.timezoom;
 
-        //TODO calculate useful arrangement
+        //TODO calculate useful arrangement depending on number of graphs etc
         var innerheight = height - this.measures.graphtopmargin - this.measures.graphbottommargin
         this.graphs[0].sizechange(60, this.measures.graphtopmargin,
             width-200,innerheight);
@@ -71,10 +97,10 @@ ZWL.Display.prototype = {
 };
 
 
-ZWL.Graph = function (display, strecke, viewcfg) {
+ZWL.Graph = function (display, line, viewcfg) {
     this.display = display;
-    //TODO: fetch real strecke detail
-    this.strecke = ringxde;
+    //TODO: fetch real line detail
+    this.line = ringxde;
     this.xstart = defaultval(viewcfg.xstart, 0);
     this.xend = defaultval(viewcfg.xend, 1);
     this.trains = {};
@@ -100,8 +126,8 @@ ZWL.Graph = function (display, strecke, viewcfg) {
     this.locaxis.labels = this.locaxis.g.group();
     this.locaxis.bottom = this.svg.use(this.locaxis.labels).addClass('locaxis');
 
-    for ( var i in this.strecke.elements ) {
-        var loc = this.strecke.elements[i];
+    for ( var i in this.line.elements ) {
+        var loc = this.line.elements[i];
         if ( 'code' in loc ) {
             this.locaxis[loc.id] = this.locaxis.labels.plain(loc.code)
                 .attr('title', loc.name);
@@ -149,7 +175,7 @@ ZWL.Graph.prototype = {
         this.reposition_train_labels();
     },
     redraw: function () {
-        // size of internal drawing (covering the whole strecke)
+        // size of internal drawing (covering the whole line)
         this.drawwidth = this.boxwidth / (this.xend-this.xstart)
         this.trainboxframe
             .size(this.boxwidth, this.boxheight)
@@ -161,8 +187,8 @@ ZWL.Graph.prototype = {
         this.locaxis.g.translate(this.x, this.y-this.measures.locaxisoverbox);
         this.locaxis.bottom.translate(this.x, this.y + this.boxheight
             + this.measures.locaxisunderbox);
-        for ( var i in this.strecke.elements ) {
-            var loc = this.strecke.elements[i];
+        for ( var i in this.line.elements ) {
+            var loc = this.line.elements[i];
             if ( 'code' in loc )
                 this.locaxis[loc.id].move(this.pos2x(loc.id), 0);
         }
@@ -215,7 +241,7 @@ ZWL.Graph.prototype = {
         if ( typeof(id) == 'number')
             return (id-this.xstart)*this.drawwidth;
 
-        var elm = this.strecke.getElement(id);
+        var elm = this.line.getElement(id);
         return (elm.pos-this.xstart) * this.drawwidth;
     },
     measures: {
@@ -343,15 +369,15 @@ ZWL.TrainDrawing = function (graph, train) {
     this.train = train;
     this.points = null;
     this.svg = this.graph.trainbox.group()
-        .addClass('trainlineg').addClass('train' + train.info.nr)
+        .addClass('trainpathg').addClass('train' + train.info.nr)
         .attr('title', train.info.name)
         .mouseover(function(){ this.front(); });
 
-    this.trainline = this.svg.polyline([[-1,-1]]).addClass('trainline')
+    this.trainpath = this.svg.polyline([[-1,-1]]).addClass('trainpath')
         .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastblur.mask);
-    // bg = invisible, thicker line to allow easier pointing
-    this.trainlinebg = this.svg.polyline([[-1,-1]]).addClass('trainlinebg')
+    // bg = invisible, thicker path to allow easier pointing
+    this.trainpathbg = this.svg.polyline([[-1,-1]]).addClass('trainpathbg')
         .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastblur.mask);
 
@@ -393,8 +419,8 @@ ZWL.TrainDrawing.prototype = {
         var coordinates = this.points.map(function (p) {
             return [this.graph.pos2x(p[0]), this.display.time2y(p[1])];
         }, this);
-        this.trainline.plot(coordinates);
-        this.trainlinebg.plot(coordinates);
+        this.trainpath.plot(coordinates);
+        this.trainpathbg.plot(coordinates);
 
         this.reposition_label('entry', this.label.entry);
         this.reposition_label('exit', this.label.exit);
@@ -416,7 +442,7 @@ ZWL.TrainDrawing.prototype = {
         // first, check the simple case: train start/stops within graph
         // this avoids calculating tons of intersections where there are none.
         // (`firststop` refers to the last element in the `exit` case.)
-        var firststop_pos = this.graph.strecke.getElement(points[0][0]).pos;
+        var firststop_pos = this.graph.line.getElement(points[0][0]).pos;
         if ( points[0][1].within(this.display.starttime, this.display.endtime)
              && firststop_pos.within(this.graph.xstart, this.graph.xend) ) {
             x = this.graph.pos2x(firststop_pos);
@@ -467,8 +493,7 @@ ZWL.TrainDrawing.prototype = {
                         + ' label defined, removing');
             label.translate(100, 100);
         } else {
-            // avoid lines "between pixels"
-            x = Math.floor(x); y = Math.floor(y);
+            x = Math.floor(x); y = Math.floor(y); // avoid lines "between pixels"
             console.log('draw', this.train.info.nr, x, y, orientation);
             var bb = label.bbox();
             if ( orientation == 'left') {
