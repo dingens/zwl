@@ -42,14 +42,13 @@ ZWL.Display = function (element, graphinfo, timezoom) {
     ];
 
     this.sizechange();
+
     // avoid resizing tons of times while the user drags the window
-    var that = this;
     $(window).resize(function () {
-        window.clearTimeout(that.resizetimeout);
-        that.resizetimeout = window.setTimeout(
-            function () { that.sizechange(); },
-            250);
-    });
+        window.clearTimeout(this.resizetimeout);
+        this.resizetimeout =
+            window.setTimeout(this.sizechange.bind(this), 250);
+    }.bind(this));
 };
 
 ZWL.Display.prototype = {
@@ -141,20 +140,19 @@ ZWL.Graph = function (display, linename, viewcfg) {
         .click(function() { that.xend -=.05; that.display.redraw(); });
 
     this.linegetterthrobber = this.svg.plain('Lade Streckendaten …');
-    var that = this;
     this.linegetter = $.getJSON(SCRIPT_ROOT + '/lines/' + this.linename + '.json',
-        function (data) {
-            that.line = new ZWL.LineConfiguration(data);
-            that.linegetterthrobber.remove();
+        (function (data) {
+            this.line = new ZWL.LineConfiguration(data);
+            this.linegetterthrobber.remove();
 
-            for ( var i in that.line.elements ) {
-                var loc = that.line.elements[i];
+            for ( var i in this.line.elements ) {
+                var loc = this.line.elements[i];
                 if ( 'code' in loc ) {
-                    that.locaxis[loc.id] = that.locaxis.labels.plain(loc.code)
+                    this.locaxis[loc.id] = this.locaxis.labels.plain(loc.code)
                         .attr('title', loc.name);
                 }
             }
-        }
+        }).bind(this)
     );
 
 };
@@ -210,8 +208,7 @@ ZWL.Graph.prototype = {
         this.nowmarker.plot(this.pos2x(0),this.display.time2y(this.display.now),
                             this.pos2x(0)+this.drawwidth,this.display.time2y(this.display.now));
 
-        var that = this;
-        this.linegetter.done(function () { that.late_redraw(); });
+        this.linegetter.done(this.late_redraw.bind(this));
     },
     late_redraw: function () {
         // code that can only be run after this.line is loaded
@@ -292,18 +289,18 @@ ZWL.TimeAxis = function ( display ) {
         .add(this.svg.path('M 3,10 L 17,10'))
         .click(function() { display.timezoom /= Math.SQRT2; display.redraw(); });
 
-    var that = this; // `this` is overridden in dragging functions
+    var timeaxis = this; // `this` is overridden in dragging functions
     this.axis.dragstart = function (delta, event) {
         this.addClass('grabbing');
     }
     this.axis.dragmove = function (delta, event) {
-        var old = that.display.starttime;
-        that.display.starttime = that.display.y2time((-this.transform().y));
-        that.display.timechange();
+        //TODO: see if this has to be rate-limited (as with window.resize)
+        timeaxis.display.starttime = timeaxis.display.y2time((-this.transform().y));
+        timeaxis.display.timechange();
     };
     this.axis.dragend = function (delta, event) {
         this.removeClass('grabbing');
-        that.display.redraw();
+        timeaxis.display.redraw();
     };
 
     this.times = {}
