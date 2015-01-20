@@ -73,8 +73,8 @@ ZWL.Display.prototype = {
         // code to be executed whenever `starttime` changes
         // this runs lots of times while the user moves the time axis, so keep it short!
 
-        this.graphs[0].timechange();
         this.timeaxis.timechange();
+        this.graphs[0].timechange();
         this.endtime = this.starttime + (this.height - this.measures.graphtopmargin
                        - this.measures.graphbottommargin) / this.timezoom;
 
@@ -183,6 +183,7 @@ ZWL.Graph.prototype = {
             .size(this.boxwidth,this.boxheight)
             .move(0,this.display.time2y(this.display.starttime));
 
+        //TODO: see if this has to be rate-limited (as with window.resize)
         this.reposition_train_labels();
     },
     redraw: function () {
@@ -294,7 +295,6 @@ ZWL.TimeAxis = function ( display ) {
         this.addClass('grabbing');
     }
     this.axis.dragmove = function (delta, event) {
-        //TODO: see if this has to be rate-limited (as with window.resize)
         timeaxis.display.starttime = timeaxis.display.y2time((-this.transform().y));
         timeaxis.display.timechange();
     };

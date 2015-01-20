@@ -4,6 +4,16 @@ import time
 from flask import abort, send_from_directory, Response, json, request
 from zwl import app
 
+@app.route('/lines/<key>')
+def lines(key=None):
+    time.sleep(app.config['RESPONSE_DELAY'])
+
+    if not key.endswith('.json'):
+        abort(404)
+
+    dir = os.path.join(app.root_path, 'lines')
+    return send_from_directory(dir, key, mimetype='application/json; charset=utf8')
+
 @app.route('/')
 @app.route('/frontend/<filename>')
 @app.route('/frontend/<subdir>/<filename>')
@@ -22,17 +32,6 @@ def frontend(subdir='', filename=None):
     frontend_dir = app.config.get('FRONTEND_DIR',
         os.path.join(app.root_path, os.pardir, os.pardir, 'frontend'))
     return send_from_directory(os.path.join(frontend_dir, subdir), filename)
-
-@app.route('/lines/<key>')
-def lines(key=None):
-    # ensure the js can cope with slow responses
-    time.sleep(app.config['RESPONSE_DELAY'])
-
-    if not key.endswith('.json'):
-        abort(404)
-
-    dir = os.path.join(app.root_path, 'lines')
-    return send_from_directory(dir, key, mimetype='application/json; charset=utf8')
 
 @app.route('/_variables.js')
 def js_variables():
