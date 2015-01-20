@@ -1,4 +1,4 @@
-ZWL = {};
+var ZWL = {};
 
 /*
 Code layout remarks
@@ -38,12 +38,12 @@ ZWL.Display = function (element, graphinfo, timezoom) {
     this.timeaxis = new ZWL.TimeAxis(this);
     // TODO: generate dynamically using `graphinfo`
     this.graphs = [
-        new ZWL.Graph(this, 'ring-xde', {})
+        new ZWL.Graph(this, 'sample', {})
     ];
 
     this.sizechange();
     // avoid resizing tons of times while the user drags the window
-    that = this;
+    var that = this;
     $(window).resize(function () {
         window.clearTimeout(that.resizetimeout);
         that.resizetimeout = window.setTimeout(
@@ -97,10 +97,9 @@ ZWL.Display.prototype = {
 };
 
 
-ZWL.Graph = function (display, line, viewcfg) {
+ZWL.Graph = function (display, linename, viewcfg) {
     this.display = display;
-    //TODO: fetch real line detail
-    this.line = ringxde;
+    this.linename = linename;
     this.xstart = defaultval(viewcfg.xstart, 0);
     this.xend = defaultval(viewcfg.xend, 1);
     this.trains = {};
@@ -126,14 +125,6 @@ ZWL.Graph = function (display, line, viewcfg) {
     this.locaxis.labels = this.locaxis.g.group();
     this.locaxis.bottom = this.svg.use(this.locaxis.labels).addClass('locaxis');
 
-    for ( var i in this.line.elements ) {
-        var loc = this.line.elements[i];
-        if ( 'code' in loc ) {
-            this.locaxis[loc.id] = this.locaxis.labels.plain(loc.code)
-                .attr('title', loc.name);
-        }
-    }
-
     //TODO: provisory. should be draggable.
     var that = this;
     this.locaxis.leftleftbutton = this.locaxis.g.group().addClass('button')
@@ -148,6 +139,24 @@ ZWL.Graph = function (display, line, viewcfg) {
         .click(function() { that.xend +=.05; that.display.redraw(); });
     this.locaxis.rightrightbutton = this.locaxis.g.use(this.locaxis.leftrightbutton)
         .click(function() { that.xend -=.05; that.display.redraw(); });
+
+    this.linegetterthrobber = this.svg.plain('Lade Streckendaten …');
+    var that = this;
+    this.linegetter = $.getJSON(SCRIPT_ROOT + '/lines/' + this.linename + '.json',
+        function (data) {
+            that.line = new ZWL.LineConfiguration(data);
+            that.linegetterthrobber.remove();
+
+            for ( var i in that.line.elements ) {
+                var loc = that.line.elements[i];
+                if ( 'code' in loc ) {
+                    that.locaxis[loc.id] = that.locaxis.labels.plain(loc.code)
+                        .attr('title', loc.name);
+                }
+            }
+        }
+    );
+
 };
 
 ZWL.Graph.prototype = {
@@ -159,6 +168,10 @@ ZWL.Graph.prototype = {
         this.y = y;
         this.boxwidth = width;
         this.boxheight = height;
+
+        var bb = this.linegetterthrobber.bbox()
+        this.linegetterthrobber.move(this.x + (this.boxwidth-bb.width) / 2,
+                                     this.y + (this.boxheight-bb.height) / 2);
 
         this.locaxis.rightleftbutton.translate(this.boxwidth+65);
         this.locaxis.rightrightbutton.translate(this.boxwidth+65);
@@ -187,12 +200,6 @@ ZWL.Graph.prototype = {
         this.locaxis.g.translate(this.x, this.y-this.measures.locaxisoverbox);
         this.locaxis.bottom.translate(this.x, this.y + this.boxheight
             + this.measures.locaxisunderbox);
-        for ( var i in this.line.elements ) {
-            var loc = this.line.elements[i];
-            if ( 'code' in loc )
-                this.locaxis[loc.id].move(this.pos2x(loc.id), 0);
-        }
-
         this.pastblur.past
             .size(this.drawwidth, this.display.time2y(this.display.now))
             .move(this.pos2x(0), 0);
@@ -202,6 +209,17 @@ ZWL.Graph.prototype = {
 
         this.nowmarker.plot(this.pos2x(0),this.display.time2y(this.display.now),
                             this.pos2x(0)+this.drawwidth,this.display.time2y(this.display.now));
+
+        var that = this;
+        this.linegetter.done(function () { that.late_redraw(); });
+    },
+    late_redraw: function () {
+        // code that can only be run after this.line is loaded
+        for ( var i in this.line.elements ) {
+            var loc = this.line.elements[i];
+            if ( 'code' in loc )
+                this.locaxis[loc.id].move(this.pos2x(loc.id), 0);
+        }
 
         this.fetch_trains();
         for ( var tid in this.trains ) {
@@ -494,7 +512,6 @@ ZWL.TrainDrawing.prototype = {
             label.translate(100, 100);
         } else {
             x = Math.floor(x); y = Math.floor(y); // avoid lines "between pixels"
-            console.log('draw', this.train.info.nr, x, y, orientation);
             var bb = label.bbox();
             if ( orientation == 'left') {
                 label.translate(x-bb.width-5,y-bb.height/2);
@@ -513,9 +530,9 @@ ZWL.TrainDrawing.prototype = {
     },
 }
 
-ZWL.LineConfiguration = function(name, elements) {
-    this.name = name;
-    this.elements = elements;
+ZWL.LineConfiguration = function (obj) {
+    this.name = obj.name;
+    this.elements = obj.elements;
 }
 
 ZWL.LineConfiguration.prototype = {
@@ -596,15 +613,6 @@ function intersectvertseg(x, ya, yb, x1, y1, x2, y2) {
 
 
 // some data for playing around (later to be fetched from the server)
-ringxde = new ZWL.LineConfiguration('Ring (ab Derau)', [
-    {'type':'bhf', 'id':'XDE#1', 'pos':0, code:'XDE', 'name':'Derau'},
-    {'type':'str', 'id':'XDE#1_XCE#1', 'pos':.15, 'length':3000, 'tracks':2},
-    {'type':'bhf', 'id':'XCE#1', 'pos':.3, code:'XCE', 'name':'Cella'},
-    {'type':'str', 'id':'XCE#1_XLG#1', 'pos':.4, 'length':2000, 'tracks':2},
-    {'type':'bhf', 'id':'XLG#1', 'pos':.5, code:'XLG', 'name':'Leopoldgrün'},
-    {'type':'str', 'id':'XLG#1_XDE#2', 'pos':.75, 'length':5000, 'tracks':2},
-    {'type':'bhf', 'id':'XDE#2', 'pos':1, code:'XDE', 'name':'Derau'},
-]);
 ice406 = new ZWL.TrainInfo('ICE', 406, [
     {'loc':'XDE#1', 'arr_real':null, 'dep_real':13091820},
     {'str':'XDE#1_XCE#1'},

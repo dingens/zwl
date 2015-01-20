@@ -1,0 +1,12 @@
+{
+    "name": "kläine Beispielstrecke",
+    "elements": [
+        {"type": "bhf", "id": "XDE#1", "code": "XDE", "pos": 0, "name": "Derau"},
+        {"type": "str", "id": "XDE#1_XCE#1", "pos": 0.15, "length": 3000, "tracks": 2},
+        {"type": "bhf", "id": "XCE#1", "code": "XCE", "pos": 0.3, "name": "Cella"},
+        {"type": "str", "id": "XCE#1_XLG#1", "pos": 0.4, "length": 2000, "tracks": 2},
+        {"type": "bhf", "id": "XLG#1", "code": "XLG", "pos": 0.5, "name": "Leopoldgrün"},
+        {"type": "str", "id": "XLG#1_XDE#2", "pos": 0.75, "length": 5000, "tracks": 2},
+        {"type": "bhf", "id": "XDE#2", "code": "XDE", "pos": 1, "name": "Derau"}
+    ]
+}
