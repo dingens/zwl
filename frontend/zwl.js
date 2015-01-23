@@ -213,6 +213,7 @@ ZWL.Graph.prototype = {
     },
     late_redraw: function () {
         // code that can only be run after this.line is loaded
+
         for ( var i in this.line.elements ) {
             var loc = this.line.elements[i];
             if ( 'code' in loc )
@@ -220,37 +221,48 @@ ZWL.Graph.prototype = {
         }
 
         this.fetch_trains();
-        for ( var tid in this.trains ) {
-            var train = this.trains[tid];
-            if ( train.status == 'deleted' ) {
-                train.drawing.remove();
-            } else if ( train.status == 'new') {
-                train.drawing = new ZWL.TrainDrawing(this, train);
-            } else if ( train.status == 'updated') {
-                train.drawing.update();
-            }
-        }
     },
     reposition_train_labels: function () {
-        for ( var tid in this.trains ) {
-            var train = this.trains[tid];
+        for ( var tnr in this.trains ) {
+            var train = this.trains[tnr];
+            // TODO: don't redraw the whole train path, only the labels
             train.drawing.update();
         }
     },
-    _fetch_trains_called: false,
     fetch_trains: function () {
-        if ( !this._fetch_trains_called ) {
-            this.trains = {
-                406: {'info':ice406, 'status': 'new'},
-                2342: {'info':ire2342, 'status': 'new'},
-                12345: {'info':rb12345, 'status': 'new'},
-            }
-        } else {
-            for ( var tid in this.trains ) {
-                this.trains[tid].status = 'updated';
-            }
-        }
-        this._fetch_trains_called = true;
+        //TODO display "loading..." or similar
+        this.trainfetcher = $.getJSON(SCRIPT_ROOT
+            + '/trains/' + this.linename + '.json',
+            {
+                'starttime': this.display.starttime,
+                'endtime': this.display.endtime,
+            },
+            (function (data) {
+                for ( var tnr in this.trains )
+                    this.trains[tnr]._unused = true;
+                for ( var i in data.trains ) {
+                    var train = data.trains[i];
+                    var info = new ZWL.TrainInfo.from_object(train);
+                    if ( train.nr in this.trains ) {
+                        delete this.trains[train.nr]._unused;
+                        this.trains[train.nr].info = info;
+                        //TODO: only if timetable changed
+                        this.trains[train.nr].drawing.update();
+                    } else {
+                        this.trains[train.nr] = {'info': info};
+                        this.trains[train.nr].drawing = new ZWL.TrainDrawing(this, train.nr);
+                    }
+                }
+
+                for ( var tnr in this.trains ) {
+                    if ( this.trains[tnr]._unused ) {
+                        console.log('delete unused train ' + tnr);
+                        this.trains[tnr].drawing.remove();
+                        delete this.trains[tnr];
+                    }
+                }
+            }).bind(this)
+        );
     },
     pos2x: function (id) {
         // allow values like xstart and xend as input
@@ -369,23 +381,26 @@ ZWL.TimeAxis.prototype = {
     },
 }
 
-ZWL.TrainInfo = function (gattung, nr, timetable, direction, comment) {
-    this.gattung = gattung;
+ZWL.TrainInfo = function (type, nr, timetable, direction, comment) {
+    this.type = type;
     this.nr = nr;
     this.timetable = timetable;
     this.direction = direction;
     this.comment = comment;
-    this.name = this.gattung + ' ' + this.nr.toString();
+    this.name = this.type + ' ' + this.nr.toString();
+}
+ZWL.TrainInfo.from_object = function (o) {
+    return new ZWL.TrainInfo(o.type, o.nr, o.timetable, o.direction, o.comment);
 }
 
-ZWL.TrainDrawing = function (graph, train) {
+ZWL.TrainDrawing = function (graph, trainnr) {
     this.graph = graph;
     this.display = graph.display;
-    this.train = train;
+    this.train = graph.trains[trainnr];
     this.points = null;
     this.svg = this.graph.trainbox.group()
-        .addClass('trainpathg').addClass('train' + train.info.nr)
-        .attr('title', train.info.name)
+        .addClass('trainpathg').addClass('train' + this.train.info.nr)
+        .attr('title', this.train.info.name)
         .mouseover(function(){ this.front(); });
 
     this.trainpath = this.svg.polyline([[-1,-1]]).addClass('trainpath')
@@ -504,10 +519,9 @@ ZWL.TrainDrawing.prototype = {
         }
 
         if ( x == null || y == null || orientation == null ) {
-            console.log('no position for ' + this.train.info.nr + ' ' + mode
-                        + ' label defined, removing');
-            label.translate(100, 100);
+            label.hide();
         } else {
+            label.show();
             x = Math.floor(x); y = Math.floor(y); // avoid lines "between pixels"
             var bb = label.bbox();
             if ( orientation == 'left') {
@@ -607,25 +621,3 @@ function intersectvertseg(x, ya, yb, x1, y1, x2, y2) {
     // It is required that ya < yb.
     return intersecthorizseg(x, ya, yb, y1, x1, y2, x2);
 }
-
-
-// some data for playing around (later to be fetched from the server)
-ice406 = new ZWL.TrainInfo('ICE', 406, [
-    {'loc':'XDE#1', 'arr_real':null, 'dep_real':13091820},
-    {'str':'XDE#1_XCE#1'},
-    {'loc':'XCE#1', 'arr_real':13092000, 'dep_real':13092060},
-    {'str':'XCE#1_XLG#1'},
-    {'loc':'XLG#1', 'arr_real':null, 'dep_real':13092300},
-    {'str':'XLG#1_XDE#2'},
-    {'loc':'XDE#2', 'arr_real':13092600, 'dep_real':null},
-], 'right');
-ire2342 = new ZWL.TrainInfo('IRE', 2342, [
-    {'loc':'XDE#2', 'arr_real':null, 'dep_real':13092240},
-    {'str':'XLG#1_XDE#2'},
-    {'loc':'XLG#1', 'arr_real':13092540, 'dep_real':13092540},
-], 'left');
-rb12345 = new ZWL.TrainInfo('RB', 12345, [
-    {'loc':'XDE#1', 'arr_real':null, 'dep_real':13091800},
-    {'str':'XLG#1_XDE#2'},
-    {'loc':'XDE#2', 'arr_real':13092260, 'dep_real':null},
-], 'right');
