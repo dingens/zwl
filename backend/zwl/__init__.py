@@ -12,3 +12,4 @@ db = SQLAlchemy(app)
 # circular imports
 import zwl.database
 import zwl.views
+import zwl.lines

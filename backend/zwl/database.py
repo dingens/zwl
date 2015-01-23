@@ -38,16 +38,17 @@ class SessionTimetable(CommonTimetable):
 class CommonTrains(db.Model):
     __abstract__ = True
     id = db.Column(db.Integer, primary_key=True)
-    type_id = db.Column('zuggattung_id', db.Integer)
     nr = db.Column('zugnummer', db.Integer)
     vmax = db.Column(db.Integer)
     comment = db.Column('bemerkungen', db.String(255))
 
 class StaticTrains(CommonTrains):
     __tablename__ = 'fahrplan_zuege'
+    type_id = db.Column('zuggattung_id', db.Integer)
 
 class SessionTrains(CommonTrains):
     __tablename__ = 'fahrplan_sessionzuege'
+    type_id = db.Column('zuggattung', db.Integer)
 
 Trains = SessionTrains if app.config['USE_SESSION_TIMETABLE'] else StaticTrains
 Timetable = SessionTimetable if app.config['USE_SESSION_TIMETABLE'] else StaticTimetable

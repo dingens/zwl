@@ -3,17 +3,18 @@ import os
 import time
 from flask import abort, send_from_directory, Response, json, request, jsonify
 from werkzeug.exceptions import NotFound
-from zwl import app
+from zwl import app, lines
 
-@app.route('/lines/<key>')
-def lines(key=None):
+@app.route('/lines/<key>.json')
+def get_lines(key=None):
     time.sleep(app.config['RESPONSE_DELAY'])
+    if key is None:
+        return Response('\n'.join(lines.LINES), mimetype='text/plain')
 
-    if not key.endswith('.json'):
+    if key not in lines.LINES:
         abort(404)
 
-    dir = os.path.join(app.root_path, 'lines')
-    return send_from_directory(dir, key, mimetype='application/json; charset=utf8')
+    return jsonify(lines.LINES[key].serialize())
 
 
 @app.route('/trains/<line>.json')
