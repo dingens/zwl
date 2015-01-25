@@ -45,7 +45,7 @@ class SessionTimetable(CommonTimetable):
 
 Timetable = SessionTimetable if app.config['USE_SESSION_TIMETABLE'] else StaticTimetable
 
-class CommonTrains(db.Model):
+class CommonTrain(db.Model):
     __abstract__ = True
     id = db.Column(db.Integer, primary_key=True)
     nr = db.Column('zugnummer', db.Integer)
@@ -59,10 +59,10 @@ class CommonTrains(db.Model):
 #    def type_obj(self):
 #        return db.relationship(TrainType, primaryjoin=self.type_id==TrainType.id)
 
-class StaticTrains(CommonTrains):
+class StaticTrain(CommonTrain):
     __tablename__ = 'fahrplan_zuege'
 
-class SessionTrains(CommonTrains):
+class SessionTrain(CommonTrain):
     __tablename__ = 'fahrplan_sessionzuege'
 
-Trains = SessionTrains if app.config['USE_SESSION_TIMETABLE'] else StaticTrains
+Train = SessionTrain if app.config['USE_SESSION_TIMETABLE'] else StaticTrain

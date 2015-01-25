@@ -34,7 +34,7 @@ def get_trains(train_ids, line=None):
     line = get_line(line)
     timetable_entries = Timetable.query.filter(Timetable.train_id.in_(train_ids)) \
         .order_by(Timetable.sorttime).all()
-    trains = Trains.query.filter(Trains.id.in_(train_ids)).all()
+    trains = Train.query.filter(Train.id.in_(train_ids)).all()
 
     trains = {t.id : t for t in trains}
 
@@ -43,7 +43,7 @@ def get_trains(train_ids, line=None):
         timetables[row.train_id].append(row)
 
     for tid in train_ids:
-        train = Trains.query.get(tid)
+        train = trains[tid]
 
         #TODO: emit multiple seperate timetable lists if train leaves the line
         #      and re-enters from the opposite direction
