@@ -61,7 +61,8 @@ def get_train_info(line):
             },
         ])
     return jsonify(
-        trains=list(trains.get_trains_within_timeframe(request.args['starttime'], request.args['endtime'], line))
+        trains=list(trains.get_train_information_within_timeframe(
+            request.args['starttime'], request.args['endtime'], line))
     )
 
 
