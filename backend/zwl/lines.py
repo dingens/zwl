@@ -1,4 +1,14 @@
 # -*- coding: utf8 -*-
+from werkzeug.utils import cached_property
+
+def get_line(line):
+    if line is None:
+        return line
+
+    if isinstance(line, Line):
+        return line
+
+    return lines[line]
 
 class Line(object):
     def __init__(self, id, name, elements):
@@ -21,6 +31,10 @@ class Line(object):
                 yield OpenLine('%s_%s' % (last.id, next.id),
                                (last.pos + next.pos)/2)
         yield locations[-1]
+
+    @cached_property
+    def locationcodes(self):
+        return list(e.code for e in self.elements if hasattr(e, 'code'))
 
     def serialize(self):
         return dict(
@@ -106,11 +120,11 @@ class Signal(Loc):
             **super(Signal, self).serialize()
         )
 
-LINES = {}
+lines = {}
 def add_line(*args, **kwargs):
     l = Line(*args, **kwargs)
-    assert l.id not in LINES
-    LINES[l.id] = l
+    assert l.id not in lines
+    lines[l.id] = l
 
 add_line('sample', u'Beispielsträcke', [
     Station('XDE#1', 0, 'XDE', u'Derau'),
@@ -124,7 +138,7 @@ add_line('sample', u'Beispielsträcke', [
 
 add_line('ring-xde', u'Ring, XCE-XDE-XBG', [
     # xwf#1
-    Station('XCE#1', .2, 'XCE', u'Cella'),
+    Station('XCE#1', 0, 'XCE', u'Cella'),
     BlockPost('XAP#1', .3, 'XAP', u'Alp'),
     Station('XDE#1', .5, 'XDE', u'Derau'),
     Signal('XSBK4#1', .65, 'XSBK4', 'right'),
@@ -133,5 +147,6 @@ add_line('ring-xde', u'Ring, XCE-XDE-XBG', [
     Signal('XSBK1#1', .75, 'XSBK4', 'left'),
     # anst berg
     Station('XBG#1', .9, 'XBG', u'Berg'),
+    Station('XLG#1', 1, 'XLG', u'Leopoldgrün'),
     # xwf#2
 ])

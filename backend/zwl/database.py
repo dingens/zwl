@@ -1,7 +1,15 @@
 # -*- coding: utf8 -*-
+from sqlalchemy.ext.declarative import declared_attr
 from zwl import app, db
 
 #TODO add relations
+
+class TrainType(db.Model):
+    __tablename__ = 'zuege_zuggattungen'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column('zuggattung', db.String(11))
+    description = db.Column('bezeichnung', db.String(255))
+    category = db.Column('verkehrsart', db.Enum('fv', 'nv', 'gv', 'lz', 'sz'))
 
 class CommonTimetable(db.Model):
     __abstract__ = True
@@ -35,20 +43,26 @@ class SessionTimetable(CommonTimetable):
     track_want = db.Column('gleis_soll', db.String(5))
     track_real = db.Column('gleis_ist', db.String(5))
 
+Timetable = SessionTimetable if app.config['USE_SESSION_TIMETABLE'] else StaticTimetable
+
 class CommonTrains(db.Model):
     __abstract__ = True
     id = db.Column(db.Integer, primary_key=True)
     nr = db.Column('zugnummer', db.Integer)
+    @declared_attr
+    def type_id(self):
+        return db.Column('zuggattung_id', db.Integer, db.ForeignKey(TrainType.id))
     vmax = db.Column(db.Integer)
     comment = db.Column('bemerkungen', db.String(255))
 
+#    @declared_attr
+#    def type_obj(self):
+#        return db.relationship(TrainType, primaryjoin=self.type_id==TrainType.id)
+
 class StaticTrains(CommonTrains):
     __tablename__ = 'fahrplan_zuege'
-    type_id = db.Column('zuggattung_id', db.Integer)
 
 class SessionTrains(CommonTrains):
     __tablename__ = 'fahrplan_sessionzuege'
-    type_id = db.Column('zuggattung', db.Integer)
 
 Trains = SessionTrains if app.config['USE_SESSION_TIMETABLE'] else StaticTrains
-Timetable = SessionTimetable if app.config['USE_SESSION_TIMETABLE'] else StaticTimetable

@@ -3,18 +3,19 @@ import os
 import time
 from flask import abort, send_from_directory, Response, json, request, jsonify
 from werkzeug.exceptions import NotFound
-from zwl import app, lines
+from zwl import app, lines, trains
+from zwl.lines import lines
 
 @app.route('/lines/<key>.json')
 def get_lines(key=None):
     time.sleep(app.config['RESPONSE_DELAY'])
     if key is None:
-        return Response('\n'.join(lines.LINES), mimetype='text/plain')
+        return Response('\n'.join(lines.keys()), mimetype='text/plain')
 
-    if key not in lines.LINES:
+    if key not in lines:
         abort(404)
 
-    return jsonify(lines.LINES[key].serialize())
+    return jsonify(lines[key].serialize())
 
 
 @app.route('/trains/<line>.json')
@@ -59,8 +60,9 @@ def get_train_info(line):
              'direction': 'right',
             },
         ])
-    else:
-        raise NotFound()
+    return jsonify(
+        trains=list(trains.get_trains_within_timeframe(request.args['starttime'], request.args['endtime'], line))
+    )
 
 
 @app.route('/')
