@@ -1,14 +1,15 @@
 # -*- coding: utf8 -*-
 import os
-import time
 from flask import abort, send_from_directory, Response, json, request, jsonify
+from time import sleep
 from werkzeug.exceptions import NotFound
-from zwl import app, lines, trains
-from zwl.lines import lines
+from zwl import app, trains
+from zwl.lines import lines, get_line
+from zwl.utils import js2time, time2js
 
 @app.route('/lines/<key>.json')
 def get_lines(key=None):
-    time.sleep(app.config['RESPONSE_DELAY'])
+    sleep(app.config['RESPONSE_DELAY'])
     if key is None:
         return Response('\n'.join(lines.keys()), mimetype='text/plain')
 
@@ -20,7 +21,12 @@ def get_lines(key=None):
 
 @app.route('/trains/<line>.json')
 def get_train_info(line):
-    time.sleep(app.config['RESPONSE_DELAY'])
+    sleep(app.config['RESPONSE_DELAY'])
+
+    try:
+        line = get_line(line)
+    except KeyError:
+        abort(404)
 
     if line == 'sample':
         return jsonify(trains=[
@@ -60,9 +66,16 @@ def get_train_info(line):
              'direction': 'right',
             },
         ])
+
+    starttime = js2time(request.args['starttime'])
+    endtime = js2time(request.args['endtime'])
+
     return jsonify(
         trains=list(trains.get_train_information_within_timeframe(
-            request.args['starttime'], request.args['endtime'], line))
+            starttime, endtime, line)),
+        line=line.name,
+        starttime=time2js(starttime),
+        endtime=time2js(endtime),
     )
 
 

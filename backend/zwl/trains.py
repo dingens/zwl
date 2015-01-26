@@ -4,6 +4,7 @@ from datetime import date, datetime, time
 from zwl import app, db
 from zwl.database import *
 from zwl.lines import get_line
+from zwl.utils import time2js
 
 def get_train_information_within_timeframe(starttime, endtime, line, xstart=0, xend=1):
     """
@@ -13,10 +14,6 @@ def get_train_information_within_timeframe(starttime, endtime, line, xstart=0, x
     included (for example, trains that start on the last stop of the line)
     """
     line = get_line(line)
-    if not isinstance(starttime, time):
-        starttime = datetime.fromtimestamp(float(starttime)).time()
-    if not isinstance(endtime, time):
-        endtime = datetime.fromtimestamp(float(endtime)).time()
 
     #TODO use only stations on `line` between xstart and xend
     q = db.session.query(TimetableEntry.train_id).distinct() \
@@ -55,28 +52,18 @@ def get_train_information(train_ids, line=None):
                 continue
             timetable.append({
                 'loc': '%s#1' % ttentry.loc, #TODO
-                'arr_real': _stringtime2time(ttentry.arr),
-                'dep_real': _stringtime2time(ttentry.dep),
+                'arr_real': time2js(ttentry.arr),
+                'dep_real': time2js(ttentry.dep),
                 })
 
         if len(timetable) < 2:
             continue
 
         yield {
-            'type': train.type, #TODO
+            'type': train.type,
             'nr': train.nr,
             'timetable': timetable,
             'timetable_hash': 0, #TODO
             'direction': timetables[tid][0].direction, #TODO
             'comment': u'',
         }
-
-def _stringtime2time(s):
-    if not s:
-        return None
-
-    if len(s) == 5:
-        s += ':00'
-    t = datetime.strptime(s, '%H:%M:%S').time()
-
-    return int(datetime.combine(date(1970, 6, 1), t).strftime('%s'))
