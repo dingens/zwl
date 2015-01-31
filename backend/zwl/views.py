@@ -100,7 +100,13 @@ def frontend(subdir='', filename=None):
 
 @app.route('/_variables.js')
 def js_variables():
-    return Response('SCRIPT_ROOT = %s' % json.htmlsafe_dumps(request.script_root),
+    vars = {
+        'SCRIPT_ROOT': request.script_root,
+        'DEFAULT_LINE': 'ring-xde',
+        'ALL_LINES': lines.keys(),
+    }
+    return Response(('%s = %s;\n' % (k, json.htmlsafe_dumps(v))
+                     for (k,v) in vars.items()),
                     mimetype='text/javascript')
 
 @app.route('/debug')
