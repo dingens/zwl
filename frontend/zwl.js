@@ -8,7 +8,8 @@ vocabulary notes.
 * graph: a diagram
 * line: a concatenation of stations and rail lines, and information about
   these elements. Corresponds roughly to German "Strecke"
-* path: the image drawn inside a graph for one train. Must not be confused with `line`, see above.
+* path: the image drawn inside a graph for one train. Must not be confused with
+  `line`, see above.
 
 class hierarchy.
 * ZWL.Display is the main class. It contains all other elements, manages the
@@ -31,14 +32,14 @@ ZWL.Display = function (element, graphinfo, timezoom) {
 
     this.timezoom = defaultval(timezoom, .25); // pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
-    this.now = 13092300;
+    this.now = 13098600;
     this.starttime = this.now - 600;
     this.endtime = null;
 
     this.timeaxis = new ZWL.TimeAxis(this);
     // TODO: generate dynamically using `graphinfo`
     this.graphs = [
-        new ZWL.Graph(this, 'sample', {})
+        new ZWL.Graph(this, 'ring-xde', {})
     ];
 
     this.sizechange();
@@ -64,14 +65,14 @@ ZWL.Display.prototype = {
                        - this.measures.graphbottommargin) / this.timezoom;
 
         //TODO calculate useful arrangement depending on number of graphs etc
-        var innerheight = height - this.measures.graphtopmargin - this.measures.graphbottommargin
+        var innerheight = height - this.measures.graphtopmargin - this.measures.graphbottommargin;
         this.graphs[0].sizechange(60, this.measures.graphtopmargin,
             width-200,innerheight);
         this.timeaxis.sizechange(width-80,this.measures.graphtopmargin, 75,innerheight);
     },
-    timechange: function () {
-        // code to be executed whenever `starttime` changes
+    timechange: function (starttime) {
         // this runs lots of times while the user moves the time axis, so keep it short!
+        this.starttime = starttime;
 
         this.timeaxis.timechange();
         this.graphs[0].timechange();
@@ -139,7 +140,10 @@ ZWL.Graph = function (display, linename, viewcfg) {
     this.locaxis.rightrightbutton = this.locaxis.g.use(this.locaxis.leftrightbutton)
         .click(function() { that.xend -=.05; that.display.redraw(); });
 
+    if (this.linegetterthrobber != undefined)
+        this.linegetterthrobber.remove();
     this.linegetterthrobber = this.svg.plain('Lade Streckendaten …');
+    this.trainfetcherthrobber = this.svg.plain('Lade Züge …').hide();
     this.linegetter = $.getJSON(SCRIPT_ROOT + '/lines/' + this.linename + '.json',
         (function (data) {
             this.line = new ZWL.LineConfiguration(data);
@@ -177,7 +181,8 @@ ZWL.Graph.prototype = {
         this.redraw();
     },
     timechange: function () {
-        this.trainbox.translate(this.x, this.y - this.display.time2y(this.display.starttime));
+        this.trainbox.translate(
+            this.x,this.y - this.display.time2y(this.display.starttime));
 
         this.traincliprect
             .size(this.boxwidth,this.boxheight)
@@ -230,7 +235,16 @@ ZWL.Graph.prototype = {
         }
     },
     fetch_trains: function () {
-        //TODO display "loading..." or similar
+        var bb = this.trainfetcherthrobber.bbox()
+        if ( this.display.oldstarttime != undefined
+             && this.display.oldstarttime < this.display.starttime )
+            this.trainfetcherthrobber.move(this.x + (this.boxwidth-bb.width) / 2,
+                                           this.y + 5);
+        else
+            this.trainfetcherthrobber.move(this.x + (this.boxwidth-bb.width) / 2,
+                                           this.y + this.boxheight-bb.height-5);
+        this.trainfetcherthrobber.show();
+
         this.trainfetcher = $.getJSON(SCRIPT_ROOT
             + '/trains/' + this.linename + '.json',
             {
@@ -238,6 +252,7 @@ ZWL.Graph.prototype = {
                 'endtime': this.display.endtime,
             },
             (function (data) {
+                this.trainfetcherthrobber.hide();
                 for ( var tnr in this.trains )
                     this.trains[tnr]._unused = true;
                 for ( var i in data.trains ) {
@@ -307,8 +322,7 @@ ZWL.TimeAxis = function ( display ) {
         this.addClass('grabbing');
     }
     this.axis.dragmove = function (delta, event) {
-        timeaxis.display.starttime = timeaxis.display.y2time((-this.transform().y));
-        timeaxis.display.timechange();
+        timeaxis.display.timechange(timeaxis.display.y2time((-this.transform().y)));
     };
     this.axis.dragend = function (delta, event) {
         this.removeClass('grabbing');
