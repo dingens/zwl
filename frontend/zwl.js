@@ -22,26 +22,40 @@ class hierarchy.
   the value set in Display by TimeAxis.
 * ZWL.TrainDrawing is the class that maintains and draws one train path,
   updating it if the timetable changes etc.
+* ZWL.ViewConfig is an object that stores information on which graphs shall be
+  displayed. It is normally configured by the user using location.hash. It
+  is responsible for neatly positioning graph(s) and timeaxis on the screen.
 
 */
 
 
-ZWL.Display = function (element, graphinfo, timezoom) {
+ZWL.Display = function (element, viewconfig) {
     this.svg = SVG(element).translate(0.5, 0.5);
                             /* put lines in the middle of pixels -> sharper*/
 
-    this.timezoom = defaultval(timezoom, .25); // pixels per second
+    this.timezoom = .25; // can be overridden by viewconfig. pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
     this.now = 13098600;
     this.starttime = this.now - 600;
     this.endtime = null;
 
-    this.timeaxis = new ZWL.TimeAxis(this);
-    // TODO: generate dynamically using `graphinfo`
-    this.graphs = [
-        new ZWL.Graph(this, 'ring-xde', {})
-    ];
+    try {
+        this.viewconfig = this._parse_viewconfig(viewconfig);
 
+        // this will set this.graphs, and maybe overwrite this.timezoom
+        this.viewconfig.apply(this);
+    } catch (e) {
+        if ( ! ( e instanceof ZWL.ViewConfigParseError))
+            throw e;
+        $('svg').remove();
+        var div = $('<div id="errormsg">Fehler beim Parsen der Ansichtskonfiguration: </div>');
+        div.append($('<pre/>').text(e.msg));
+        $(document.body).prepend(div);
+        return;
+    }
+    this.timeaxis = new ZWL.TimeAxis(this);
+
+    // initially position everything
     this.sizechange();
 
     // avoid resizing tons of times while the user drags the window
@@ -64,11 +78,7 @@ ZWL.Display.prototype = {
         this.endtime = this.starttime + (this.height - this.measures.graphtopmargin
                        - this.measures.graphbottommargin) / this.timezoom;
 
-        //TODO calculate useful arrangement depending on number of graphs etc
-        var innerheight = height - this.measures.graphtopmargin - this.measures.graphbottommargin;
-        this.graphs[0].sizechange(60, this.measures.graphtopmargin,
-            width-200,innerheight);
-        this.timeaxis.sizechange(width-80,this.measures.graphtopmargin, 75,innerheight);
+        this.viewconfig.sizechange(this, width, height);
     },
     timechange: function (starttime) {
         // this runs lots of times while the user moves the time axis, so keep it short!
@@ -90,6 +100,18 @@ ZWL.Display.prototype = {
     y2time: function (y) {
         return y / this.timezoom + this.epoch;
     },
+    _parse_viewconfig: function(vc) {
+        if ( vc.indexOf('/') == -1 ) {
+            if ( vc == '' )
+                vc = DEFAULT_LINE;
+            var args = [vc];
+            var method = 'gt';
+        } else {
+            var args = vc.split('/');
+            var method = args.shift();
+        }
+        return new ZWL.ViewConfig(method, args);
+    },
     measures: {
         graphtopmargin: 45,
         graphbottommargin: 45,
@@ -98,6 +120,20 @@ ZWL.Display.prototype = {
 
 
 ZWL.Graph = function (display, linename, viewcfg) {
+    // allow passing unparsed stuff as viewcfg
+    if ( viewcfg.constructor === Array ) {
+        try {
+            viewcfg = this._parse_viewcfg(viewcfg);
+        } catch(e) {
+            if ( ! ( e instanceof ZWL.ViewConfigParseError))
+                throw e;
+            console.log("Error parsing graph's view config, ignoring.", e.msg);
+            viewcfg = {};
+        }
+    }
+    if ( viewcfg == null )
+        viewcfg = {};
+
     this.display = display;
     this.linename = linename;
     this.xstart = defaultval(viewcfg.xstart, 0);
@@ -159,6 +195,15 @@ ZWL.Graph = function (display, linename, viewcfg) {
         }).bind(this)
     );
 
+};
+ZWL.Graph.from_string = function (display, vc) {
+    var cfg = vc.split(',');
+    var linename = cfg.shift();
+    if ( linename == '' )
+        throw new ZWL.ViewConfigParseError('keine Strecke angegeben');
+    if ( ALL_LINES.indexOf(linename) == -1 )
+        throw new ZWL.ViewConfigParseError('ungültiger Streckenname: ' + linename);
+    return new ZWL.Graph(display, linename, cfg);
 };
 
 ZWL.Graph.prototype = {
@@ -286,6 +331,20 @@ ZWL.Graph.prototype = {
 
         var elm = this.line.getElement(id);
         return (elm.pos-this.xstart) * this.drawwidth;
+    },
+    _parse_viewcfg: function (raw) {
+        if ( raw.length == 0 )
+            return {}
+        if ( raw.length != 2 )
+            throw new ZWL.ViewConfigParseError('expected 2 parameters, got ' + raw.length);
+
+        var vc = {
+            xstart: parseFloat(raw[0]),
+            xend: parseFloat(raw[1]),
+        }
+        if ( vc.xstart === NaN || vc.xend === NaN)
+            throw new ZWL.ViewConfigParseError('one of the parameters is NaN');
+        return vc;
     },
     measures: {
         locaxisoverbox: 45,
@@ -569,6 +628,56 @@ ZWL.LineConfiguration.prototype = {
         console.error('no such element', id);
         return undefined;
     },
+}
+
+ZWL.ViewConfig = function (method, allargs) {
+    this.method = method;
+
+    // extract special args common to all methods
+    this.args = [];
+    for ( var i = 0; i < allargs.length; i++) {
+        var a = allargs[i];
+        if ( a == '' )
+            continue;
+        else if ( a.substr(0,3) == 'tz=' )
+            this.timezoom = parseFloat(a.substr(3));
+        else
+            this.args.push(a);
+    }
+
+    if ( method == 'gt' || method == 'tg' ) {
+        if ( this.args.length != 1 )
+            throw new ZWL.ViewConfigParseError('Erwarte 1 Parameter, nicht ' + this.args.length);
+        this.graphs = [this.args[0]];
+    } else {
+        throw new ZWL.ViewConfigParseError('Ungültige Ansichtskonfiguration: ' + method);
+    }
+}
+ZWL.ViewConfig.prototype = {
+    apply: function (display) {
+        display.graphs = []
+        this.graphs.map(function(g) {
+            display.graphs.push(ZWL.Graph.from_string(display, g));
+        });
+        if ( this.timezoom != undefined )
+            display.timezoom = this.timezoom;
+    },
+    sizechange: function (display, width, height) {
+        var innerheight = height - display.measures.graphtopmargin - display.measures.graphbottommargin;
+        if ( this.method == 'gt' ) {
+            display.graphs[0].sizechange(60, display.measures.graphtopmargin,
+                width-200,innerheight);
+            display.timeaxis.sizechange(width-70,display.measures.graphtopmargin, 75,innerheight);
+        }
+        if ( this.method == 'tg' ) {
+            display.timeaxis.sizechange(0,display.measures.graphtopmargin, 75,innerheight);
+            display.graphs[0].sizechange(140, display.measures.graphtopmargin,
+                width-200,innerheight);
+        }
+    },
+}
+ZWL.ViewConfigParseError = function (msg) {
+    this.msg = msg;
 }
 
 // HELPERS
