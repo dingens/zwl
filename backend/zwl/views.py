@@ -23,23 +23,18 @@ def get_lines(key=None):
 def get_train_info(line):
     sleep(app.config['RESPONSE_DELAY'])
 
-    try:
-        line = get_line(line)
-    except KeyError:
-        abort(404)
-
     if line == 'sample':
         return jsonify(trains=[
             {'type': 'ICE',
              'nr': 406,
              'timetable': [
-                {'loc':'XDE#1', 'arr_real':None, 'dep_real':13091820},
+                {'loc':'XDE#1', 'arr_real':None, 'dep_real':13099020},
                 {'str':'XDE#1_XCE#1'},
-                {'loc':'XCE#1', 'arr_real':13092000, 'dep_real':13092060},
+                {'loc':'XCE#1', 'arr_real':13099200, 'dep_real':13099260},
                 {'str':'XCE#1_XLG#1'},
-                {'loc':'XLG#1', 'arr_real':None, 'dep_real':13092300},
+                {'loc':'XLG#1', 'arr_real':None, 'dep_real':13099500},
                 {'str':'XLG#1_XDE#2'},
-                {'loc':'XDE#2', 'arr_real':13092600, 'dep_real':None},
+                {'loc':'XDE#2', 'arr_real':13099800, 'dep_real':None},
              ],
              'timetable_hash': 0,
              'direction': 'right', #TODO calculate from timetable
@@ -48,9 +43,9 @@ def get_train_info(line):
             {'type': 'IRE',
              'nr': 2342,
              'timetable': [
-                {'loc':'XDE#2', 'arr_real':None, 'dep_real':13092240},
+                {'loc':'XDE#2', 'arr_real':None, 'dep_real':13099440},
                 {'str':'XLG#1_XDE#2'},
-                {'loc':'XLG#1', 'arr_real':13092540, 'dep_real':13092540},
+                {'loc':'XLG#1', 'arr_real':13099740, 'dep_real':13099740},
              ],
              'timetable_hash': 0,
              'direction': 'left',
@@ -58,14 +53,19 @@ def get_train_info(line):
             {'type': 'RB',
              'nr': 12345,
              'timetable': [
-                {'loc':'XDE#1', 'arr_real':None, 'dep_real':13091800},
+                {'loc':'XDE#1', 'arr_real':None, 'dep_real':13099000},
                 {'str':'XLG#1_XDE#2'},
-                {'loc':'XDE#2', 'arr_real':13092260, 'dep_real':None},
+                {'loc':'XDE#2', 'arr_real':13099460, 'dep_real':None},
              ],
              'timetable_hash': 0,
              'direction': 'right',
             },
         ])
+
+    try:
+        line = get_line(line)
+    except KeyError:
+        abort(404)
 
     starttime = js2time(request.args['starttime'])
     endtime = js2time(request.args['endtime'])
