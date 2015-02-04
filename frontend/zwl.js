@@ -92,7 +92,9 @@ ZWL.Display.prototype = {
                        - this.measures.graphbottommargin) / this.timezoom;
     },
     redraw: function () {
-        this.graphs[0].redraw();
+        this.graphs.map(function(g) {
+            g.redraw();
+        });
         this.timeaxis.redraw();
     },
     time2y: function (time) {
@@ -660,6 +662,8 @@ ZWL.ViewConfig = function (method, allargs) {
             throw new ZWL.ViewConfigParseError('Erwarte 3 Parameter, nicht ' + this.args.length);
         this.graphs = [this.args[0], this.args[2]];
         this.proportion = parseInt(this.args[1]) / 100; // url param is percent
+        if ( isNaN(this.proportion) || this.proportion < 0 || this.proportion > 1 )
+            throw new ZWL.ViewConfigParseError('zweiter Parameter muss zwischen 0 und 100 sein');
     } else {
         throw new ZWL.ViewConfigParseError('Ungültige Ansichtskonfiguration: ' + method);
     }
