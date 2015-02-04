@@ -35,7 +35,7 @@ ZWL.Display = function (element, viewconfig) {
 
     this.timezoom = .25; // can be overridden by viewconfig. pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
-    this.now = 13098600;
+    this.now = 13099320;
     this.starttime = this.now - 600;
     this.endtime = null;
 
@@ -85,10 +85,11 @@ ZWL.Display.prototype = {
         this.starttime = starttime;
 
         this.timeaxis.timechange();
-        this.graphs[0].timechange();
+        this.graphs.map(function(g) {
+            g.timechange();
+        });
         this.endtime = this.starttime + (this.height - this.measures.graphtopmargin
                        - this.measures.graphbottommargin) / this.timezoom;
-
     },
     redraw: function () {
         this.graphs[0].redraw();
@@ -115,6 +116,10 @@ ZWL.Display.prototype = {
     measures: {
         graphtopmargin: 45,
         graphbottommargin: 45,
+        graphhorizmargin: 70,
+        graphminwidth: 200,
+        timeaxiswidth: 75,
+        horizdistance: 5,
     },
 };
 
@@ -210,24 +215,25 @@ ZWL.Graph.prototype = {
     sizechange: function (x,y, width,height) {
         if (arguments.length < 4) console.error('not enough arguments');
 
-        // position and dimensions of visible area
-        this.x = x;
-        this.y = y;
-        this.boxwidth = width;
-        this.boxheight = height;
+        // position and dimensions of the graph box
+        // round everything avoid getting 2px gray lines (instead of 1px black)
+        this.boxx = Math.floor(x);
+        this.boxy = Math.floor(y);
+        this.boxwidth = Math.ceil(width);
+        this.boxheight = Math.ceil(height);
 
         var bb = this.linegetterthrobber.bbox()
-        this.linegetterthrobber.move(this.x + (this.boxwidth-bb.width) / 2,
-                                     this.y + (this.boxheight-bb.height) / 2);
+        this.linegetterthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
+                                     this.boxy + (this.boxheight-bb.height) / 2);
 
-        this.locaxis.rightleftbutton.translate(this.boxwidth+65);
-        this.locaxis.rightrightbutton.translate(this.boxwidth+65);
+        this.locaxis.rightleftbutton.translate(this.boxwidth+75);
+        this.locaxis.rightrightbutton.translate(this.boxwidth+75);
 
         this.redraw();
     },
     timechange: function () {
         this.trainbox.translate(
-            this.x,this.y - this.display.time2y(this.display.starttime));
+            this.boxx,this.boxy - this.display.time2y(this.display.starttime));
 
         this.traincliprect
             .size(this.boxwidth,this.boxheight)
@@ -241,13 +247,13 @@ ZWL.Graph.prototype = {
         this.drawwidth = this.boxwidth / (this.xend-this.xstart)
         this.trainboxframe
             .size(this.boxwidth, this.boxheight)
-            .move(this.x, this.y)
+            .move(this.boxx, this.boxy)
             .back();
 
         this.timechange();
 
-        this.locaxis.g.translate(this.x, this.y-this.measures.locaxisoverbox);
-        this.locaxis.bottom.translate(this.x, this.y + this.boxheight
+        this.locaxis.g.translate(this.boxx, this.boxy-this.measures.locaxisoverbox);
+        this.locaxis.bottom.translate(this.boxx, this.boxy + this.boxheight
             + this.measures.locaxisunderbox);
         this.pastblur.past
             .size(this.drawwidth, this.display.time2y(this.display.now))
@@ -283,11 +289,11 @@ ZWL.Graph.prototype = {
         var bb = this.trainfetcherthrobber.bbox()
         if ( this.display.oldstarttime != undefined
              && this.display.oldstarttime < this.display.starttime )
-            this.trainfetcherthrobber.move(this.x + (this.boxwidth-bb.width) / 2,
-                                           this.y + 5);
+            this.trainfetcherthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
+                                           this.boxy + 5);
         else
-            this.trainfetcherthrobber.move(this.x + (this.boxwidth-bb.width) / 2,
-                                           this.y + this.boxheight-bb.height-5);
+            this.trainfetcherthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
+                                           this.boxy + this.boxheight-bb.height-5);
         this.trainfetcherthrobber.show();
 
         this.trainfetcher = $.getJSON(SCRIPT_ROOT
@@ -349,8 +355,8 @@ ZWL.Graph.prototype = {
     measures: {
         locaxisoverbox: 45,
         locaxisunderbox: 30,
-        trainlabelxmargin: 5,
-        trainlabelymargin: 2,
+        trainlabelxmargin: 7,
+        trainlabelymargin: 4,
     }
 };
 
@@ -649,6 +655,11 @@ ZWL.ViewConfig = function (method, allargs) {
         if ( this.args.length != 1 )
             throw new ZWL.ViewConfigParseError('Erwarte 1 Parameter, nicht ' + this.args.length);
         this.graphs = [this.args[0]];
+    } else if ( ['tgg', 'gtg', 'ggt'].indexOf(method) > -1 ) {
+        if ( this.args.length != 3 )
+            throw new ZWL.ViewConfigParseError('Erwarte 3 Parameter, nicht ' + this.args.length);
+        this.graphs = [this.args[0], this.args[2]];
+        this.proportion = parseInt(this.args[1]) / 100; // url param is percent
     } else {
         throw new ZWL.ViewConfigParseError('Ungültige Ansichtskonfiguration: ' + method);
     }
@@ -663,16 +674,46 @@ ZWL.ViewConfig.prototype = {
             display.timezoom = this.timezoom;
     },
     sizechange: function (display, width, height) {
-        var innerheight = height - display.measures.graphtopmargin - display.measures.graphbottommargin;
+        var dm = display.measures;
+        var innerheight = height - dm.graphtopmargin - dm.graphbottommargin;
         if ( this.method == 'gt' ) {
-            display.graphs[0].sizechange(60, display.measures.graphtopmargin,
-                width-200,innerheight);
-            display.timeaxis.sizechange(width-70,display.measures.graphtopmargin, 75,innerheight);
+            display.graphs[0].sizechange(dm.graphhorizmargin, dm.graphtopmargin,
+                width-dm.timeaxiswidth-dm.graphhorizmargin*2, innerheight);
+            display.timeaxis.sizechange(width-dm.timeaxiswidth, dm.graphtopmargin,
+                dm.timeaxiswidth, innerheight);
         }
         if ( this.method == 'tg' ) {
-            display.timeaxis.sizechange(0,display.measures.graphtopmargin, 75,innerheight);
-            display.graphs[0].sizechange(140, display.measures.graphtopmargin,
-                width-200,innerheight);
+            display.timeaxis.sizechange(0, dm.graphtopmargin,
+                dm.timeaxiswidth, innerheight);
+            display.graphs[0].sizechange(dm.timeaxiswidth+dm.graphhorizmargin+dm.horizdistance, dm.graphtopmargin,
+                width-dm.timeaxiswidth-2*dm.graphhorizmargin, innerheight);
+        } else if ( ['tgg', 'gtg', 'ggt'].indexOf(this.method) > -1 ) {
+            var graphswidth = width - dm.timeaxiswidth - 4*dm.graphhorizmargin - dm.horizdistance;
+            var firstgraphwidth = Math.min(
+                Math.max(graphswidth * this.proportion, dm.graphminwidth),
+                graphswidth - dm.graphminwidth);
+            if ( this.method == 'ggt' ) {
+                display.graphs[0].sizechange(dm.graphhorizmargin, dm.graphtopmargin,
+                    firstgraphwidth, innerheight);
+                display.graphs[1].sizechange(firstgraphwidth+dm.horizdistance+3*dm.graphhorizmargin, dm.graphtopmargin,
+                    graphswidth-firstgraphwidth, innerheight);
+                display.timeaxis.sizechange(width-dm.timeaxiswidth, dm.graphtopmargin,
+                    dm.timeaxiswidth, innerheight);
+            } else if ( this.method == 'gtg' ) {
+                display.graphs[0].sizechange(dm.graphhorizmargin, dm.graphtopmargin,
+                    firstgraphwidth, innerheight);
+                display.timeaxis.sizechange(firstgraphwidth+2*dm.graphhorizmargin+dm.horizdistance, dm.graphtopmargin,
+                    dm.timeaxiswidth, innerheight);
+                display.graphs[1].sizechange(firstgraphwidth+3*dm.graphhorizmargin+2*dm.horizdistance+dm.timeaxiswidth, dm.graphtopmargin,
+                    graphswidth-firstgraphwidth, innerheight);
+            } else if ( this.method == 'tgg' ) {
+                display.timeaxis.sizechange(0, dm.graphtopmargin,
+                    dm.timeaxiswidth, innerheight);
+                display.graphs[0].sizechange(dm.timeaxiswidth+dm.horizdistance+dm.graphhorizmargin, dm.graphtopmargin,
+                    firstgraphwidth, innerheight);
+                display.graphs[1].sizechange(firstgraphwidth+3*dm.graphhorizmargin+2*dm.horizdistance+dm.timeaxiswidth, dm.graphtopmargin,
+                    graphswidth-firstgraphwidth, innerheight);
+            }
         }
     },
 }

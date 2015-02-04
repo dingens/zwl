@@ -12,7 +12,7 @@ line, polyline, path { stroke: black; stroke-width: 1px; fill: none; }
 .trainpathg:hover .trainpath, .trainpathg.selected .trainpath { stroke: black; stroke-width: 2.5px; }
 .trainpathg:hover .trainlabel rect, .trainpathg.selected .trainlabel rect { fill: black; stroke: black; }
 
-.trainlabel rect { fill: #444; opacity: .9; stroke: #444; }
+.trainlabel rect { fill: #444; opacity: .9; stroke: #fff; stroke-width: 3px; }
 .trainlabel text { fill: white; }
 
 .nowmarker { stroke: #bb0; stroke-width: 2px; }
