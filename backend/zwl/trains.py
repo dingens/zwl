@@ -33,13 +33,10 @@ def get_train_information(trains, line=None):
     """
     line = get_line(line)
 
-    # this emits many queries if many of the trains are not in the
-    # session cache but saves a lot if most are already there...
-    for i, tr in enumerate(trains):
-        if isinstance(tr, (int, long)):
-            trains[i] = Train.query.get(tr)
-
-    trains = {t.id : t for t in trains}
+    # fetch all trains and create a lookup dict of the form {id: Train}
+    #TODO: try to joinedload transition_{from,to}
+    trains = dict(db.session.query(Train.id, Train).filter(Train.id.in_(
+        (t if isinstance(t, (int, long)) else t.id) for t in trains)))
 
     # fetch all timetable entries we need in one query, sort them apart locally
     timetable_entries = TimetableEntry.query \
