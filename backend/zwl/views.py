@@ -73,7 +73,7 @@ def get_train_info(line):
     return jsonify(
         trains=list(trains.get_train_information_within_timeframe(
             starttime, endtime, line)),
-        line=line.name,
+        line=line.id,
         starttime=time2js(starttime),
         endtime=time2js(endtime),
     )

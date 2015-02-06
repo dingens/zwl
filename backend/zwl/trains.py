@@ -30,6 +30,7 @@ def get_train_information(train_ids, line=None):
     """
     line = get_line(line)
 
+    #TODO: use joinedload or something for transition_{from,to}
     trains = Train.query.filter(Train.id.in_(train_ids)).all()
     trains = {t.id : t for t in trains}
 
@@ -65,5 +66,7 @@ def get_train_information(train_ids, line=None):
             'timetable': timetable,
             'timetable_hash': 0, #TODO
             'direction': timetables[tid][0].direction, #TODO
+            'transition_to': train.transition_to_nr,
+            'transition_from': train.transition_from_nr,
             'comment': u'',
         }
