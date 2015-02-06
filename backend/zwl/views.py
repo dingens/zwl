@@ -3,8 +3,10 @@ import os
 from flask import abort, send_from_directory, Response, json, request, jsonify
 from time import sleep
 from werkzeug.exceptions import NotFound
-from zwl import app, trains
+from zwl import app
+from zwl.database import Train
 from zwl.lines import lines, get_line
+from zwl.trains import get_train_ids_within_timeframe, get_train_information
 from zwl.utils import js2time, time2js
 
 @app.route('/lines/<key>.json')
@@ -19,8 +21,8 @@ def get_lines(key=None):
     return jsonify(lines[key].serialize())
 
 
-@app.route('/trains/<line>.json')
-def get_train_info(line):
+@app.route('/graphdata/<line>.json')
+def get_graph_data(line):
     sleep(app.config['RESPONSE_DELAY'])
 
     if line == 'sample':
@@ -70,9 +72,12 @@ def get_train_info(line):
     starttime = js2time(request.args['starttime'])
     endtime = js2time(request.args['endtime'])
 
+    train_ids = list(get_train_ids_within_timeframe(
+        starttime, endtime, line))
+    trains = Train.query.filter(Train.id.in_(train_ids)).all()
+
     return jsonify(
-        trains=list(trains.get_train_information_within_timeframe(
-            starttime, endtime, line)),
+        trains=list(get_train_information(trains, line)),
         line=line.id,
         starttime=time2js(starttime),
         endtime=time2js(endtime),

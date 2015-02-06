@@ -186,7 +186,7 @@ ZWL.Graph = function (display, linename, viewcfg) {
     if (this.linegetterthrobber != undefined)
         this.linegetterthrobber.remove();
     this.linegetterthrobber = this.svg.plain('Lade Streckendaten …');
-    this.trainfetcherthrobber = this.svg.plain('Lade Züge …').hide();
+    this.graphdatafetcherthrobber = this.svg.plain('Lade Züge …').hide();
     this.linegetter = $.getJSON(SCRIPT_ROOT + '/lines/' + this.linename + '.json',
         (function (data) {
             this.line = new ZWL.LineConfiguration(data);
@@ -288,24 +288,24 @@ ZWL.Graph.prototype = {
         }
     },
     fetch_trains: function () {
-        var bb = this.trainfetcherthrobber.bbox()
+        var bb = this.graphdatafetcherthrobber.bbox()
         if ( this.display.oldstarttime != undefined
              && this.display.oldstarttime < this.display.starttime )
-            this.trainfetcherthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
+            this.graphdatafetcherthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
                                            this.boxy + 5);
         else
-            this.trainfetcherthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
+            this.graphdatafetcherthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
                                            this.boxy + this.boxheight-bb.height-5);
-        this.trainfetcherthrobber.show();
+        this.graphdatafetcherthrobber.show();
 
-        this.trainfetcher = $.getJSON(SCRIPT_ROOT
-            + '/trains/' + this.linename + '.json',
+        this.graphdatafetcher = $.getJSON(SCRIPT_ROOT
+            + '/graphdata/' + this.linename + '.json',
             {
                 'starttime': this.display.starttime,
                 'endtime': this.display.endtime,
             },
             (function (data) {
-                this.trainfetcherthrobber.hide();
+                this.graphdatafetcherthrobber.hide();
                 for ( var tnr in this.trains )
                     this.trains[tnr]._unused = true;
                 for ( var i in data.trains ) {
