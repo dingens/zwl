@@ -56,7 +56,7 @@ class TimetableEntry(db.Model):
         track_want = track_real = property(track)
 
     def __repr__(self):
-        return '<%s train_id=%d at %r>' \
+        return '<%s train_id=%s at %r>' \
             % (self.__class__.__name__, self.train_id, self.loc)
 
     @property #TODO: use TypeDecorator
@@ -89,5 +89,5 @@ class Train(db.Model):
     type = association_proxy('type_obj', 'name')
 
     def __repr__(self):
-        return '<%s id=%d (%s %d)>' \
+        return '<%s #%s (%s %d)>' \
             % (self.__class__.__name__, self.id, self.type, self.nr)
