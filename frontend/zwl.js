@@ -484,11 +484,11 @@ ZWL.TrainDrawing = function (graph, trainnr) {
         .attr('title', this.train.info.name)
         .mouseover(function(){ this.front(); });
 
-    this.trainpath = this.svg.polyline([[-1,-1]]).addClass('trainpath')
-        .clipWith(this.graph.trainclip)
-        .maskWith(this.graph.pastblur.mask);
     // bg = invisible, thicker path to allow easier pointing
     this.trainpathbg = this.svg.polyline([[-1,-1]]).addClass('trainpathbg')
+        .clipWith(this.graph.trainclip)
+        .maskWith(this.graph.pastblur.mask);
+    this.trainpath = this.svg.polyline([[-1,-1]]).addClass('trainpath')
         .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastblur.mask);
 

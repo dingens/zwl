@@ -1,36 +1,37 @@
 /* general definitions */
 
-body { background-color: #F9F9F9; }
+body { background-color: #111; }
 
-line, polyline, path { stroke: black; stroke-width: 1px; fill: none; }
+line, polyline, path { stroke: white; stroke-width: 1px; fill: none; }
+text { fill: white; }
 
 /* specific elements of zwl image */
 
-.trainpath { stroke: #444; stroke-width: 1.5px; }
-.trainpathbg { stroke: blue; stroke-width: 15px; stroke-opacity: .01; stroke-linecap:round; }
-.trainpathg:hover .trainpathbg { stroke-opacity: .1; }
-.trainpathg:hover .trainpath, .trainpathg.selected .trainpath { stroke: black; stroke-width: 2.5px; }
-.trainpathg:hover .trainlabel rect, .trainpathg.selected .trainlabel rect { fill: black; stroke: black; }
+.trainpath { stroke: white; stroke-width: 1.5px; }
+.trainpathbg { stroke: white; stroke-width: 15px; stroke-opacity: .01; stroke-linecap:round; }
+.trainpathg:hover .trainpath, .trainpathg.selected .trainpath { stroke: #FFA; stroke-width: 2.5px; }
+.trainpathg:hover .trainlabel text, .trainpathg.selected .trainlabel text { fill: #FF8; }
 
-.trainlabel rect { fill: #444; opacity: .9; stroke: #fff; stroke-width: 3px; }
+.trainlabel rect { fill: #111; opacity: .75; stroke: none; }
 .trainlabel text { fill: white; }
 
 .nowmarker { stroke: #bb0; stroke-width: 2px; }
 .pastblur { stroke: none; fill: white; }
 .pastblur-past { fill-opacity: .6; }
 
-.trainboxframe { stroke: black; stroke-width: 1px; fill: white; }
+.trainboxframe { stroke: white; stroke-width: 2px; fill: #222; }
 
-.locaxis text { text-anchor: middle; }
-.locaxis .button rect { fill: white; stroke: black; stroke-width: 1px; }
-.locaxis .button path { fill: black; }
+.locaxis text { fill: white; text-anchor: middle; }
+.locaxis .button rect { fill: #111; stroke: white; stroke-width: 1px; }
+.locaxis .button path { fill: white; }
 
 
 .timeaxis .axis { cursor: -webkit-grab; cursor: grab; }
 .timeaxis .axis.grabbing { cursor: -webkit-grabbing; cursor: grabbing; }
-.timeaxis-bg { fill: white; }
+.timeaxis g text { fill: white; }
+.timeaxis-bg { fill: #111; }
 
 .timeaxis .zoombuttons g { cursor: pointer; }
-.timeaxis .zoombuttons g rect { fill: white; stroke: black; stroke-width: 1px; }
-.timeaxis .zoombuttons g path { fill: none; stroke: black; stroke-width: 2px; }
-.timeaxis .zoombuttons .bg { fill: white; }
+.timeaxis .zoombuttons g rect { fill: #111; stroke: white; stroke-width: 1px; }
+.timeaxis .zoombuttons g path { fill: none; stroke: white; stroke-width: 2px; }
+.timeaxis .zoombuttons .bg { fill: #111; }
