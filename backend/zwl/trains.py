@@ -1,5 +1,6 @@
 # -*- coding: utf8 -*-
-from collections import defaultdict
+import itertools
+from collections import defaultdict, deque, OrderedDict
 from datetime import date, datetime, time
 from zwl import app, db
 from zwl.database import *
@@ -11,9 +12,11 @@ def get_train_ids_within_timeframe(starttime, endtime, line):
     Get IDs of about all trains that run on the given
     line within the given timeframe.
     """
+    #TODO allow to filter for stations between xstart and xend
+
     line = get_line(line)
 
-    #TODO allow to filter for stations between xstart and xend
+    #TODO filter for stations on `line`
     q = db.session.query(TimetableEntry.train_id).distinct() \
         .filter(TimetableEntry.sorttime.between(starttime, endtime))
     train_ids = [row[0] for row in db.session.execute(q).fetchall()]
@@ -47,28 +50,171 @@ def get_train_information(trains, line=None):
         timetables[row.train_id].append(row)
 
     for tid, train in trains.items():
-        #TODO: emit multiple seperate timetable lists if some train leaves the
-        #      line and re-enters from the opposite direction
-        timetable = []
-        for ttentry in timetables[tid]:
-            if line and ttentry.loc not in line.locationcodes:
-                continue
-            timetable.append({
-                'loc': '%s#1' % ttentry.loc, #TODO
-                'arr_real': time2js(ttentry.arr),
-                'dep_real': time2js(ttentry.dep),
-                })
+        segments = make_timetable(train, timetables[tid], line)
 
-        if len(timetable) < 2:
+        if not segments:
             continue
 
         yield {
             'type': train.type,
             'nr': train.nr,
-            'timetable': timetable,
+            'segments': segments,
             'timetable_hash': 0, #TODO
-            'direction': timetables[tid][0].direction, #TODO
             'transition_to': train.transition_to_nr,
             'transition_from': train.transition_from_nr,
             'comment': u'',
         }
+
+
+def make_timetable(train, timetable_entries, line):
+    """
+    Parse the train's `timetable_entries` and generate timetable statements
+    for the given line.
+    There may be several statements, because it is possible that a train
+    appears multiple times on a line (e.g. if the line is a ring).
+
+    Calculation assumes that one train passes every location only once. This
+    is safe because this is required by German railway regulations.
+
+    Calculation is somewhat tolerant to small variations between the
+    locations on `line` and the entries in the timetable.
+
+    Segments containing only one location (e.g. a train that starts on the
+    last stop of a line, a train that just crosses a line) are not output
+    (because they cannot be drawn by the frontend anyway).
+
+    :return: a list of segments, which themselves are a dict with two elements:
+             - `direction` (either `left` or `right`)
+             - `timetable` (list of dicts, one per location)
+    """
+    timetable_entries.sort(key=lambda e: (e.arr_real, e.dep_real))
+    timetable_locations = [e.loc for e in timetable_entries]
+
+    print 'make_timetable(%r, %r, %r)' % (train, timetable_entries, line)
+
+    def _add(seg, loc, tte, **kwargs):
+        seg['timetable'].append(dict(
+            loc=loc.id,
+            arr_real=time2js(tte.arr_plan), #TODO use _real when available
+            dep_real=time2js(tte.dep_plan),
+            **kwargs
+        ))
+
+    # segment: part of the train's route that is inside `line`.
+    segments = []
+
+    locations = deque(line.locations)
+    # one run of this loop generates one segment
+    while locations:
+        print 'new segment %s' % ' '.join(l.id for l in locations)
+        cur_seg = {'timetable': []}
+
+        starti = None
+
+        # find the first stop within `line`
+        while locations:
+            loc = locations.popleft()
+            if loc.code in timetable_locations:
+                starti = timetable_locations.index(loc.code)
+                print 'found first location: %r (i=%r)' % (loc.id, starti)
+                _add(cur_seg, loc, timetable_entries[starti])
+                break
+
+        if starti is None:
+            # none of the locations matched, abort
+            break
+
+        try:
+            i, loc = find_next_common_location(locations, timetable_locations, starti)
+            print 'found %s i=%d' % (loc.id, i)
+        except NoMatchFound:
+            print "no next common location"
+            # there is no second location, discard this segment
+            break
+        _add(cur_seg, loc, timetable_entries[i])
+        direction = -1 if i < starti else +1
+        cur_seg['direction'] = 'left' if i < starti else 'right'
+
+        print 'main loop'
+        while locations:
+            try:
+                i, loc = find_next_common_location(locations, timetable_locations, i, direction)
+                print 'found %s i=%d' % (loc.id, i)
+            except NoMatchFound:
+                break
+
+            #if hasattr(loc, 'direction') and loc.direction != 'both' and loc.direction != cur_seg['direction']:
+            #    print 'skipping %r (has direction %r, want %r)' % (loc.id, loc.direction, cur_seg['direction'])
+            #    continue
+
+            _add(cur_seg, loc, timetable_entries[i])
+
+        if direction == -1:
+            cur_seg['timetable'].reverse()
+        #TODO as soon as we have seconds, sort using them
+        print 'segment closed:', cur_seg
+        segments.append(cur_seg)
+
+    return segments
+
+
+def find_next_common_location(locations, timetable_locations, starti,
+                              direction=None, loc_threshold=3, tt_threshold=3):
+    """
+    Find the next common location appearing in both `locations` and
+    `timetable_locations` within the next `loc_threshold` locations and within
+    the next `tt_threshold` `timetable_locations`. Search starts at the
+    left end of `locations` and at index `starti` in `timetable_locations`.
+    If `direction` is set, it must be `+1` or `-1`, and the search is limited
+    to indexes higher resp. lower than `starti`.
+
+    If a match is found, `locations` has all locations up to and including
+    the matching one removed.
+    If not, `locations` is reset to the state it had before.
+
+    :return: A tuple of the form `(i, loc)` with
+             `i` being the index of the match in `timetable_locations` and
+             `loc` being the matching object from `locations`.
+    :raise NoMatchFound: if no match is found.
+    """
+    # We need these threshold to cope with small inconsistencies between the
+    # line's and timetable's locations (most common reason: a signal that is
+    # only valid for the opposite direction and thus missing in the timetable)
+
+    def _within_threshold(i):
+        if direction is None:
+            return abs(starti - i) < tt_threshold
+        if direction == +1:
+            return starti < i <= (starti + tt_threshold)
+        if direction == -1:
+            return starti > i >= (starti - tt_threshold)
+        raise RuntimeError('direction, if set, must be +1 or -1')
+
+    # if we don't find anything we have to put the locations back on
+    # `locations` to restore everything as it was
+    pushback = deque()
+
+    for _ in range(loc_threshold):
+        if not locations:
+            break
+
+        loc = locations.popleft()
+        pushback.appendleft(loc)
+
+        print '  trying %s' % loc.id
+
+        try:
+            i = timetable_locations.index(loc.code)
+        except ValueError:
+            continue
+
+        if _within_threshold(i):
+            return i, loc
+        print '  out of threshold: %s i=%d starti=%d' % (loc.code, i, starti)
+
+    # restore state of before to allow further inspection
+    locations.extendleft(pushback)
+    raise NoMatchFound()
+
+class NoMatchFound(ValueError):
+    pass

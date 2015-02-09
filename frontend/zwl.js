@@ -196,7 +196,7 @@ ZWL.Graph = function (display, linename, viewcfg) {
 
             for ( var i in this.line.elements ) {
                 var loc = this.line.elements[i];
-                if ( 'code' in loc ) {
+                if ( loc.display_label ) {
                     this.locaxis[loc.id] = this.locaxis.labels.plain(loc.code)
                         .attr('title', loc.name);
                 }
@@ -276,7 +276,7 @@ ZWL.Graph.prototype = {
 
         for ( var i in this.line.elements ) {
             var loc = this.line.elements[i];
-            if ( 'code' in loc )
+            if ( loc.display_label )
                 this.locaxis[loc.id].move(this.pos2x(loc.id), 0);
         }
 
@@ -300,8 +300,8 @@ ZWL.Graph.prototype = {
                                            this.boxy + this.boxheight-bb.height-5);
         this.graphdatafetcherthrobber.show();
 
-        this.graphdatafetcher = $.getJSON(SCRIPT_ROOT
-            + '/graphdata/' + this.linename + '.json',
+        this.graphdatafetcher = $.getJSON(
+            SCRIPT_ROOT + '/graphdata/' + this.linename + '.json',
             {
                 'starttime': this.display.starttime,
                 'endtime': this.display.endtime,
@@ -464,27 +464,58 @@ ZWL.TimeAxis.prototype = {
     },
 }
 
-ZWL.TrainInfo = function (type, nr, timetable, direction, comment) {
+ZWL.TrainInfo = function (type, nr, segments, comment) {
     this.type = type;
     this.nr = nr;
-    this.timetable = timetable;
-    this.direction = direction;
+    this.segments = segments;
     this.comment = comment;
     this.name = this.type + ' ' + this.nr.toString();
 }
 ZWL.TrainInfo.from_object = function (o) {
-    return new ZWL.TrainInfo(o.type, o.nr, o.timetable, o.direction, o.comment);
+    return new ZWL.TrainInfo(o.type, o.nr, o.segments, o.comment);
 }
 
 ZWL.TrainDrawing = function (graph, trainnr) {
     this.graph = graph;
-    this.display = graph.display;
     this.train = graph.trains[trainnr];
-    this.points = null;
+
     this.svg = this.graph.trainbox.group()
         .addClass('trainpathg').addClass('train' + this.train.info.nr)
         .attr('title', this.train.info.name)
         .mouseover(function(){ this.front(); });
+    this._create_drawingsegments();
+}
+
+ZWL.TrainDrawing.prototype = {
+    _create_drawingsegments: function () {
+        this.segments = this.train.info.segments.map(function (segment) {
+            return new ZWL.TrainDrawingSegment(this, segment);
+        }.bind(this));
+    },
+    update: function () {
+        if ( this.train.info.segments.length != this.segments.length ) {
+            this.segments.map(function (segment) { segment.remove(); });
+            this._create_drawingsegments();
+        } else {
+            this.segments.map(function (segment) { segment.update(); });
+        }
+    },
+    redraw: function () {
+        this.segments.map(function (segment) { segment.redraw(); });
+    },
+    remove: function () {
+        this.segments.map(function (segment) { segment.remove(); });
+    },
+}
+
+ZWL.TrainDrawingSegment = function (drawing, segment) {
+    this.drawing = drawing;
+    this.graph = drawing.graph;
+    this.display = drawing.graph.display;
+    this.train = this.drawing.train;
+    this.segment = segment;
+    this.points = null;
+    this.svg = drawing.svg;
 
     // bg = invisible, thicker path to allow easier pointing
     this.trainpathbg = this.svg.polyline([[-1,-1]]).addClass('trainpathbg')
@@ -508,9 +539,9 @@ ZWL.TrainDrawing = function (graph, trainnr) {
     this.update();
 }
 
-ZWL.TrainDrawing.prototype = {
+ZWL.TrainDrawingSegment.prototype = {
     update: function () {
-        var tt = this.train.info.timetable;
+        var tt = this.segment.timetable;
         this.points = [];
         for ( var elm in tt ) {
             if ( tt[elm]['loc'] ) {
@@ -561,9 +592,9 @@ ZWL.TrainDrawing.prototype = {
             x = this.graph.pos2x(firststop_pos);
             y = this.display.time2y(points[0][1]);
             if ( mode == 'entry' )
-                orientation = this.train.info.direction == 'left' ? 'right' : 'left';
+                orientation = this.segment.direction == 'left' ? 'right' : 'left';
             else
-                orientation = this.train.info.direction;
+                orientation = this.segment.direction;
         }
         //TODO prevent execution of the else branch when the train is entirely outside the box
         else {
@@ -589,7 +620,7 @@ ZWL.TrainDrawing.prototype = {
                         x = int_x, y = bottom_y, orientation = 'bottom'; break;
                     }
                 }
-                if ( this.train.info.direction == 'right' ? mode == 'entry' : mode == 'exit' ) {
+                if ( this.segment.direction == 'right' ? mode == 'entry' : mode == 'exit' ) {
                     if ( int_y = intersectvertseg(left_x, top_y, bottom_y, x1,y1,x2,y2) ) {
                         x = left_x, y = int_y, orientation = 'left'; break;
                     }

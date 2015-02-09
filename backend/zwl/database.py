@@ -37,8 +37,8 @@ class TimetableEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     train_id = db.Column('zug_id', db.Integer)
     loc = db.Column('betriebsstelle', db.String(10))
-    arr = db.Column('ankunft', StringTime(7))
-    dep = db.Column('abfahrt', StringTime(7))
+    arr_plan = db.Column('ankunft', StringTime(7))
+    dep_plan = db.Column('abfahrt', StringTime(7))
     track = db.Column('gleis', db.String(5))
     direction_code = db.Column('fahrtrichtung', db.Integer)
     sorttime = db.Column('sortierzeit', db.Time)
@@ -51,12 +51,12 @@ class TimetableEntry(db.Model):
         track_want = db.Column('gleis_soll', db.String(5))
         track_real = db.Column('gleis_ist', db.String(5))
     else:
-        arr_want = arr_real = property(arr)
-        dep_want = dep_real = property(dep)
-        track_want = track_real = property(track)
+        arr_want = arr_real = property(arr_plan)
+        dep_want = dep_real = property(dep_plan)
+        track_want = track_real = property(track_plan)
 
     def __repr__(self):
-        return '<%s train_id=%s at %r>' \
+        return '<%s train#%s at %s>' \
             % (self.__class__.__name__, self.train_id, self.loc)
 
     @property #TODO: use TypeDecorator
