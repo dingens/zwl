@@ -464,15 +464,16 @@ ZWL.TimeAxis.prototype = {
     },
 }
 
-ZWL.TrainInfo = function (type, nr, segments, comment) {
+ZWL.TrainInfo = function (type, nr, segments, category, comment) {
     this.type = type;
     this.nr = nr;
     this.segments = segments;
+    this.category = category;
     this.comment = comment;
     this.name = this.type + ' ' + this.nr.toString();
 }
 ZWL.TrainInfo.from_object = function (o) {
-    return new ZWL.TrainInfo(o.type, o.nr, o.segments, o.comment);
+    return new ZWL.TrainInfo(o.type, o.nr, o.segments, o.category, o.comment);
 }
 
 ZWL.TrainDrawing = function (graph, trainnr) {
@@ -483,6 +484,8 @@ ZWL.TrainDrawing = function (graph, trainnr) {
         .addClass('trainpathg').addClass('train' + this.train.info.nr)
         .attr('title', this.train.info.name)
         .mouseover(function(){ this.front(); });
+    if ( this.train.info.category != null )
+        this.svg.addClass('category_' + this.train.info.category);
     this._create_drawingsegments();
 }
 

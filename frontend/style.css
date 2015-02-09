@@ -9,7 +9,7 @@ text { fill: white; }
 
 .trainpath { stroke: white; stroke-width: 1.5px; }
 .trainpathbg { stroke: white; stroke-width: 15px; stroke-opacity: .01; stroke-linecap:round; }
-.trainpathg:hover .trainpath, .trainpathg.selected .trainpath { stroke: #FFA; stroke-width: 2.5px; }
+.trainpathg:hover .trainpath, .trainpathg.selected .trainpath { stroke-width: 2.5px; }
 .trainpathg:hover .trainlabel text, .trainpathg.selected .trainlabel text { fill: #FF8; }
 
 .trainlabel rect { fill: #111; opacity: .75; stroke: none; }

@@ -57,6 +57,7 @@ def get_train_information(trains, line=None):
 
         yield {
             'type': train.type,
+            'category': train.category,
             'nr': train.nr,
             'segments': segments,
             'timetable_hash': 0, #TODO

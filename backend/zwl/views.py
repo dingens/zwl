@@ -114,6 +114,33 @@ def js_variables():
                      for (k,v) in vars.items()),
                     mimetype='text/javascript')
 
+@app.route('/_style.css')
+def stylesheet():
+    _colormap_prefix = 'TRAIN_COLOR_MAP_'
+
+    def _rules():
+        for name in app.config:
+            if not name.startswith(_colormap_prefix):
+                continue
+            theme = name[len(_colormap_prefix):].lower()
+            colormap = app.config[name]
+
+            for cat, color in colormap.items():
+                if cat is None:
+                    catstring = ''
+                else:
+                    catstring = '.category_%s' % cat
+
+                yield '.theme_%s %s .trainpath { stroke: %s; }' \
+                    % (theme, catstring, color)
+                yield '.theme_%s %s .trainlabel text { fill: %s; }' \
+                    % (theme, catstring, color)
+
+            yield ''
+
+    return Response('\n'.join(_rules()), mimetype='text/css')
+
+
 @app.route('/debug')
 def debug():
     raise Exception

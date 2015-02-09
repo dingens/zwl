@@ -87,6 +87,7 @@ class Train(db.Model):
     transition_to_nr = association_proxy('transition_to', 'nr')
     type_obj = db.relationship(TrainType)
     type = association_proxy('type_obj', 'name')
+    category = association_proxy('type_obj', 'category')
 
     def __repr__(self):
         return '<%s #%s (%s %d)>' \
