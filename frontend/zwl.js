@@ -30,8 +30,10 @@ class hierarchy.
 
 
 ZWL.Display = function (element, viewconfig) {
-    this.svg = SVG(element).translate(0.5, 0.5);
-                            /* put lines in the middle of pixels -> sharper*/
+    this.svgelem = SVG(element)
+    // put lines in the middle of pixels, so that one white pixel is drawn, not
+    // two gray ones. Chrome doesn't accept the translate on <svg>, only on <g>
+    this.svg = this.svgelem.group().translate(0.5, 0.5);
 
     this.timezoom = .25; // can be overridden by viewconfig. pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
@@ -74,7 +76,7 @@ ZWL.Display.prototype = {
         }
         this.width = width;
         this.height = height;
-        this.svg.size(width,height);
+        this.svgelem.size(width,height);
         this.endtime = this.starttime + (this.height - this.measures.graphtopmargin
                        - this.measures.graphbottommargin) / this.timezoom;
 
