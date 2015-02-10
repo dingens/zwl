@@ -74,7 +74,7 @@ def get_graph_data(line):
 
     train_ids = list(get_train_ids_within_timeframe(
         starttime, endtime, line))
-    trains = Train.query.filter(Train.id.in_(train_ids)).all()
+    trains = Train.query.filter(Train.id.in_(train_ids)).all() if train_ids else []
 
     return jsonify(
         trains=list(get_train_information(trains, line)),

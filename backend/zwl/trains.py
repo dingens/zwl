@@ -36,6 +36,9 @@ def get_train_information(trains, line=None):
     """
     line = get_line(line)
 
+    if not trains:
+        return
+
     # fetch all trains and create a lookup dict of the form {id: Train}
     #TODO: try to joinedload transition_{from,to}
     trains = dict(db.session.query(Train.id, Train).filter(Train.id.in_(
