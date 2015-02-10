@@ -91,8 +91,6 @@ def make_timetable(train, timetable_entries, line):
     timetable_entries.sort(key=lambda e: (e.arr_real, e.dep_real))
     timetable_locations = [e.loc for e in timetable_entries]
 
-    print 'make_timetable(%r, %r, %r)' % (train, timetable_entries, line)
-
     def _add(seg, loc, tte, **kwargs):
         seg['timetable'].append(dict(
             loc=loc.id,
@@ -107,7 +105,6 @@ def make_timetable(train, timetable_entries, line):
     locations = deque(line.locations)
     # one run of this loop generates one segment
     while locations:
-        print 'new segment %s' % ' '.join(l.id for l in locations)
         cur_seg = {'timetable': []}
 
         starti = None
@@ -117,7 +114,6 @@ def make_timetable(train, timetable_entries, line):
             loc = locations.popleft()
             if loc.code in timetable_locations:
                 starti = timetable_locations.index(loc.code)
-                print 'found first location: %r (i=%r)' % (loc.id, starti)
                 _add(cur_seg, loc, timetable_entries[starti])
                 break
 
@@ -127,33 +123,25 @@ def make_timetable(train, timetable_entries, line):
 
         try:
             i, loc = find_next_common_location(locations, timetable_locations, starti)
-            print 'found %s i=%d' % (loc.id, i)
         except NoMatchFound:
-            print "no next common location"
             # there is no second location, discard this segment
+            print "train %d: No second stop found" % train.nr
             break
         _add(cur_seg, loc, timetable_entries[i])
         direction = -1 if i < starti else +1
         cur_seg['direction'] = 'left' if i < starti else 'right'
 
-        print 'main loop'
         while locations:
             try:
                 i, loc = find_next_common_location(locations, timetable_locations, i, direction)
-                print 'found %s i=%d' % (loc.id, i)
             except NoMatchFound:
                 break
-
-            #if hasattr(loc, 'direction') and loc.direction != 'both' and loc.direction != cur_seg['direction']:
-            #    print 'skipping %r (has direction %r, want %r)' % (loc.id, loc.direction, cur_seg['direction'])
-            #    continue
 
             _add(cur_seg, loc, timetable_entries[i])
 
         if direction == -1:
             cur_seg['timetable'].reverse()
         #TODO as soon as we have seconds, sort using them
-        print 'segment closed:', cur_seg
         segments.append(cur_seg)
 
     return segments
@@ -202,8 +190,6 @@ def find_next_common_location(locations, timetable_locations, starti,
         loc = locations.popleft()
         pushback.appendleft(loc)
 
-        print '  trying %s' % loc.id
-
         try:
             i = timetable_locations.index(loc.code)
         except ValueError:
@@ -211,7 +197,6 @@ def find_next_common_location(locations, timetable_locations, starti,
 
         if _within_threshold(i):
             return i, loc
-        print '  out of threshold: %s i=%d starti=%d' % (loc.code, i, starti)
 
     # restore state of before to allow further inspection
     locations.extendleft(pushback)
