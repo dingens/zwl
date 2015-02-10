@@ -4,8 +4,6 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy.ext.associationproxy import association_proxy
 from zwl import app, db
 
-#TODO add relations
-
 class StringTime(TypeDecorator):
     # By http://stackoverflow.com/a/28143787/196244
     impl = db.String

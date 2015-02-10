@@ -661,16 +661,16 @@ ZWL.TrainDrawingSegment.prototype = {
 ZWL.LineConfiguration = function (obj) {
     this.name = obj.name;
     this.elements = obj.elements;
+    this.elements_by_id = {};
+    for ( var i in this.elements ) {
+        var e = this.elements[i];
+        this.elements_by_id[e.id] = e;
+    }
 }
 
 ZWL.LineConfiguration.prototype = {
     getElement: function ( id ) {
-        //TODO: speed this up by caching this in an object
-        for ( var i in this.elements )
-            if ( this.elements[i].id == id )
-                return this.elements[i];
-        console.error('no such element', id);
-        return undefined;
+        return this.elements_by_id[id];
     },
 }
 
