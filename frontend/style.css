@@ -1,6 +1,7 @@
 /* general definitions */
 
-body { background-color: #111; }
+body.theme_dark { background-color: #111; }
+body.theme_dark { color: white; }
 
 line, polyline, path { stroke: white; stroke-width: 1px; fill: none; }
 text { fill: white; }
