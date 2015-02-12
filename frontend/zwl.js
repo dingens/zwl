@@ -305,6 +305,8 @@ ZWL.Graph.prototype = {
             {
                 'starttime': this.display.starttime,
                 'endtime': this.display.endtime,
+                'startpos': this.xstart,
+                'endpos': this.xend,
             },
             (function (data) {
                 this.graphdatafetcherthrobber.hide();

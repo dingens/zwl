@@ -72,8 +72,11 @@ def get_graph_data(line):
     starttime = js2time(request.args['starttime'])
     endtime = js2time(request.args['endtime'])
 
+    startpos = request.args.get('startpos', 0, float)
+    endpos = request.args.get('endpos', 1, float)
+
     train_ids = list(get_train_ids_within_timeframe(
-        starttime, endtime, line))
+        starttime, endtime, line, startpos=startpos, endpos=endpos))
     trains = Train.query.filter(Train.id.in_(train_ids)).all() if train_ids else []
 
     return jsonify(

@@ -7,7 +7,8 @@ from zwl.database import *
 from zwl.lines import get_line
 from zwl.utils import time2js
 
-def get_train_ids_within_timeframe(starttime, endtime, line):
+def get_train_ids_within_timeframe(starttime, endtime, line,
+                                   startpos=0, endpos=1):
     """
     Get IDs of about all trains that run on the given
     line within the given timeframe.
@@ -15,16 +16,19 @@ def get_train_ids_within_timeframe(starttime, endtime, line):
     #TODO allow to filter for stations between xstart and xend
 
     line = get_line(line)
+    locations = {l.code for l in
+        line.locations_extended_between(startpos, endpos)}
 
     #TODO filter for stations on `line`
     q = db.session.query(TimetableEntry.train_id).distinct() \
-        .filter(TimetableEntry.sorttime.between(starttime, endtime))
+        .filter(TimetableEntry.sorttime.between(starttime, endtime)) \
+        .filter(TimetableEntry.loc.in_(locations))
     train_ids = [row[0] for row in db.session.execute(q).fetchall()]
 
     return train_ids
 
 
-def get_train_information(trains, line=None):
+def get_train_information(trains, line):
     """
     Get information and timetable about all given trains.
     If line is given, limit timetable information to locations on that line.

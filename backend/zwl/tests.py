@@ -50,6 +50,9 @@ class TestTrains(unittest.TestCase):
         assert self.t1.id in ids
         assert self.t2.id not in ids
 
+        ids = trains.get_train_ids_within_timeframe(time(15,00), time(15,36), get_line('sample'), startpos=0, endpos=.2)
+        assert ids == []
+
     def test_get_train_information(self):
         res = list(trains.get_train_information([self.t1], get_line('sample')))
 
@@ -67,6 +70,22 @@ class TestTrains(unittest.TestCase):
         #TODO activate when implemented
         #assert allelemsd['XDE#2']['succ'] == 'XCE'
         #assert allelemsd['XLG#1']['pred'] == 'XWF'
+
+    def test_locations_extended_between(self):
+        line = get_line('sample')
+        locs = list(line.locations_extended_between())
+        assert locs == line.locations
+
+        locs = line.locations_extended_between(.4, .4)
+        assert [l.id for l in locs] == ['XCE#1', 'XLG#1']
+
+        locs = line.locations_extended_between(.31, .55)
+        assert [l.id for l in locs] == ['XCE#1', 'XLG#1', 'XBG#2']
+
+        # simulate floating point errors in javascript
+        locs = line.locations_extended_between(.2999999999999, .6000000000001)
+        assert [l.id for l in locs] == ['XCE#1', 'XLG#1', 'XBG#2']
+
 
     def tearDown(self):
         os.close(self.db_fd)

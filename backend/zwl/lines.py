@@ -41,6 +41,41 @@ class Line(object):
         """All elements of the line that are not open line segments."""
         return [e for e in self.elements if isinstance(e, Loc)]
 
+    def locations_extended_between(self, startpos=0, endpos=1):
+        """
+        Return all `locations` with `pos` between(*) `startpos` and `endpos`.
+
+        * If no location is exactly at the given limits, one additional
+        location is added at the beginning or end respectively, so that:
+        `returnval[0].pos <= startpos and returnval[1].pos > startpos`
+        and likewise with endpos.
+
+        Floating point inaccuracy is taken care of.
+
+        :return: generator of `Loc` (and subclasses) objects.
+        """
+        last = None
+        # if we get 0.19999999999999 as startpos, and a location with pos=0.2
+        # exists, we want this to be the first location, so we increase
+        # startpos a little; likewise with endpos.
+        startpos += 0.000000001
+        endpos -= 0.000000001
+        locs = iter(self.locations)
+        for l in locs:
+            if l.pos > startpos:
+                if last is not None:
+                    yield last
+                yield l
+                break
+            last = l
+        if l.pos > endpos:
+            # in that special case we mustn't enter the loop below
+            return
+        for l in locs:
+            yield l
+            if l.pos > endpos:
+                break
+
     def serialize(self):
         return dict(
             id=self.id,
