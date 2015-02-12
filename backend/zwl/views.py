@@ -29,38 +29,53 @@ def get_graph_data(line):
         return jsonify(trains=[
             {'type': 'ICE',
              'nr': 406,
-             'timetable': [
-                {'loc':'XDE#1', 'arr_real':None, 'dep_real':13099020},
-                {'str':'XDE#1_XCE#1'},
-                {'loc':'XCE#1', 'arr_real':13099200, 'dep_real':13099260},
-                {'str':'XCE#1_XLG#1'},
-                {'loc':'XLG#1', 'arr_real':None, 'dep_real':13099500},
-                {'str':'XLG#1_XDE#2'},
-                {'loc':'XDE#2', 'arr_real':13099800, 'dep_real':None},
+             'category': 'fv',
+             'segments': [
+               {
+                 'timetable': [
+                   {'loc':'XDE#1', 'arr_real':None, 'dep_real':13099020},
+                   {'str':'XDE#1_XCE#1'},
+                   {'loc':'XCE#1', 'arr_real':13099200, 'dep_real':13099260},
+                   {'str':'XCE#1_XLG#1'},
+                   {'loc':'XLG#1', 'arr_real':None, 'dep_real':13099500},
+                   {'str':'XLG#1_XDE#2'},
+                   {'loc':'XDE#2', 'arr_real':13099800, 'dep_real':None},
+                 ],
+                 'timetable_hash': 0,
+                 'direction': 'right', #TODO calculate from timetable
+               },
              ],
-             'timetable_hash': 0,
-             'direction': 'right', #TODO calculate from timetable
              'comment': u'',
             },
             {'type': 'IRE',
              'nr': 2342,
-             'timetable': [
-                {'loc':'XDE#2', 'arr_real':None, 'dep_real':13099440},
-                {'str':'XLG#1_XDE#2'},
-                {'loc':'XLG#1', 'arr_real':13099740, 'dep_real':13099740},
+             'category': 'nv',
+             'segments': [
+               {
+                 'timetable': [
+                   {'loc':'XDE#2', 'arr_real':None, 'dep_real':13099440},
+                   {'str':'XLG#1_XDE#2'},
+                   {'loc':'XLG#1', 'arr_real':13099740, 'dep_real':13099740},
+                 ],
+                 'timetable_hash': 0,
+                 'direction': 'left',
+               },
              ],
-             'timetable_hash': 0,
-             'direction': 'left',
             },
             {'type': 'RB',
              'nr': 12345,
-             'timetable': [
-                {'loc':'XDE#1', 'arr_real':None, 'dep_real':13099000},
-                {'str':'XLG#1_XDE#2'},
-                {'loc':'XDE#2', 'arr_real':13099460, 'dep_real':None},
+             'category': 'nv',
+             'segments': [
+               {
+                 'timetable': [
+                    {'loc':'XDE#1', 'arr_real':None, 'dep_real':13099000},
+                    {'str':'XLG#1_XDE#2'},
+                    {'loc':'XDE#2', 'arr_real':13099460, 'dep_real':None},
+                 ],
+                 'timetable_hash': 0,
+                 'direction': 'right',
+               },
              ],
-             'timetable_hash': 0,
-             'direction': 'right',
             },
         ])
 
