@@ -41,11 +41,18 @@ ZWL.Display = function (element, viewconfig) {
     this.starttime = this.now - 600;
     this.endtime = null;
 
+    this.timeaxis = new ZWL.TimeAxis(this);
     try {
         this.viewconfig = this._parse_viewconfig(viewconfig);
 
         // this will set this.graphs, and maybe overwrite this.timezoom
         this.viewconfig.apply(this);
+
+        var graphNames = this.graphs.map(function(g) {
+            return ALL_LINES[g.linename];
+        });
+        document.title = graphNames.join(' / ') + ' - ZWL - EBuEF';
+
     } catch (e) {
         if ( ! ( e instanceof ZWL.ViewConfigParseError))
             throw e;
@@ -55,7 +62,6 @@ ZWL.Display = function (element, viewconfig) {
         $(document.body).prepend(div);
         return;
     }
-    this.timeaxis = new ZWL.TimeAxis(this);
 
     // initially position everything
     this.sizechange();
@@ -123,7 +129,7 @@ ZWL.Display.prototype = {
         graphhorizmargin: 70,
         graphminwidth: 200,
         timeaxiswidth: 75,
-        horizdistance: 5,
+        horizdistance: -10,
     },
 };
 
@@ -210,7 +216,7 @@ ZWL.Graph.from_string = function (display, vc) {
     var linename = cfg.shift();
     if ( linename == '' )
         throw new ZWL.ViewConfigParseError('keine Strecke angegeben');
-    if ( ALL_LINES.indexOf(linename) == -1 )
+    if ( ! ALL_LINES.hasOwnProperty(linename) )
         throw new ZWL.ViewConfigParseError('ungültiger Streckenname: ' + linename);
     return new ZWL.Graph(display, linename, cfg);
 };

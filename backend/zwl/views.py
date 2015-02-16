@@ -126,7 +126,7 @@ def js_variables():
     vars = {
         'SCRIPT_ROOT': request.script_root,
         'DEFAULT_LINE': 'ring-xde',
-        'ALL_LINES': lines.keys(),
+        'ALL_LINES': {l.id: l.name for l in lines.values()},
     }
     return Response(('%s = %s;\n' % (k, json.htmlsafe_dumps(v))
                      for (k,v) in vars.items()),

@@ -20,7 +20,7 @@ text { fill: white; }
 .pastblur { stroke: none; fill: white; }
 .pastblur-past { fill-opacity: .6; }
 
-.trainboxframe { stroke: white; stroke-width: 2px; fill: #222; }
+.trainboxframe { stroke: white; stroke-width: 1px; fill: #222; }
 
 .locaxis text { fill: white; text-anchor: middle; }
 .locaxis .button rect { fill: #111; stroke: white; stroke-width: 1px; }
