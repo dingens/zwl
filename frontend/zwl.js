@@ -37,7 +37,7 @@ ZWL.Display = function (element, viewconfig) {
 
     this.timezoom = .25; // can be overridden by viewconfig. pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
-    this.now = 13099320;
+    this.now = 13095720;
     this.starttime = this.now - 600;
     this.endtime = null;
 
