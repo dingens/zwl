@@ -8,17 +8,18 @@ text { fill: white; }
 
 /* specific elements of zwl image */
 
-.trainpath { stroke: white; stroke-width: 1.5px; }
-.trainpathbg { stroke: white; stroke-width: 15px; stroke-opacity: .01; stroke-linecap:round; }
-.trainpathg:hover .trainpath, .trainpathg.selected .trainpath { stroke-width: 2.5px; }
-.trainpathg:hover .trainlabel text, .trainpathg.selected .trainlabel text { fill: #FF8; }
+.trainpath { stroke: white; stroke-width: 1.5px; stroke-linecap: round; }
+.trainpathbg { stroke: white; stroke-width: 15px; stroke-opacity: .01; stroke-linecap: round; }
+.trainpathg.selected .trainpath { stroke-width: 2.5px; }
+.trainlabelg.selected { opacity: 1; }
 
-.trainlabel rect { fill: #111; opacity: .75; stroke: none; }
+.trainlabelg { opacity: .8; }
+.trainlabel rect { fill: #111; stroke: none; }
 .trainlabel text { fill: white; }
 
 .nowmarker { stroke: #bb0; stroke-width: 2px; }
 .pastblur { stroke: none; fill: white; }
-.pastblur-past { fill-opacity: .6; }
+.pastblur-past { fill-opacity: .4; }
 
 .trainboxframe { stroke: white; stroke-width: 1px; fill: #222; }
 

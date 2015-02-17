@@ -488,12 +488,20 @@ ZWL.TrainDrawing = function (graph, trainnr) {
     this.graph = graph;
     this.train = graph.trains[trainnr];
 
-    this.svg = this.graph.trainbox.group()
+    this.labelsvg = this.graph.trainbox.group()
+        .addClass('trainlabelg').addClass('train'+ this.train.info.nr)
+        .attr('title', this.train.info.name)
+        .mouseover(this.mouseover.bind(this))
+        .mouseout(this.mouseout.bind(this));
+    this.pathsvg = this.graph.trainbox.group()
         .addClass('trainpathg').addClass('train' + this.train.info.nr)
         .attr('title', this.train.info.name)
-        .mouseover(function(){ this.front(); });
-    if ( this.train.info.category != null )
-        this.svg.addClass('category_' + this.train.info.category);
+        .mouseover(this.mouseover.bind(this))
+        .mouseout(this.mouseout.bind(this));
+    if ( this.train.info.category != null ) {
+        this.pathsvg.addClass('category_' + this.train.info.category);
+        this.labelsvg.addClass('category_' + this.train.info.category);
+    }
     this._create_drawingsegments();
 }
 
@@ -511,6 +519,14 @@ ZWL.TrainDrawing.prototype = {
             this.segments.map(function (segment) { segment.update(); });
         }
     },
+    mouseover: function () {
+        this.pathsvg.addClass('selected').front();
+        this.labelsvg.addClass('selected').front();
+    },
+    mouseout: function () {
+        this.pathsvg.removeClass('selected');
+        this.labelsvg.removeClass('selected');
+    },
     redraw: function () {
         this.segments.map(function (segment) { segment.redraw(); });
     },
@@ -526,18 +542,19 @@ ZWL.TrainDrawingSegment = function (drawing, segment) {
     this.train = this.drawing.train;
     this.segment = segment;
     this.points = null;
-    this.svg = drawing.svg;
+    this.pathsvg = drawing.pathsvg;
+    this.labelsvg = drawing.labelsvg;
 
     // bg = invisible, thicker path to allow easier pointing
-    this.trainpathbg = this.svg.polyline([[-1,-1]]).addClass('trainpathbg')
+    this.trainpathbg = this.pathsvg.polyline([[-1,-1]]).addClass('trainpathbg')
         .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastblur.mask);
-    this.trainpath = this.svg.polyline([[-1,-1]]).addClass('trainpath')
+    this.trainpath = this.pathsvg.polyline([[-1,-1]]).addClass('trainpath')
         .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastblur.mask);
 
     this.label = {}
-    this.label.g = this.svg.group().addClass('trainlabel');
+    this.label.g = this.labelsvg.group().addClass('trainlabel');
     this.label.nr = this.label.g.plain(this.train.info.nr)
         .move(this.graph.measures.trainlabelxmargin,
               this.graph.measures.trainlabelymargin);
@@ -545,8 +562,8 @@ ZWL.TrainDrawingSegment = function (drawing, segment) {
     this.label.box = this.label.g.rect(
         bb.width+this.graph.measures.trainlabelxmargin*2,
         bb.height+this.graph.measures.trainlabelymargin*2).back();
-    this.label.entry = this.svg.use(this.label.g);
-    this.label.exit = this.svg.use(this.label.g);
+    this.label.entry = this.labelsvg.use(this.label.g);
+    this.label.exit = this.labelsvg.use(this.label.g);
     this.update();
 }
 
