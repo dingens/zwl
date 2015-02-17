@@ -162,6 +162,11 @@ class Signal(Loc):
 
 class Junction(Loc):
     typecode = 'abzw'
+    display_label = True
+
+class Siding(Loc):
+    typecode = 'anst'
+    display_label = False
 
 lines = {}
 def add_line(*args, **kwargs):
@@ -212,7 +217,7 @@ add_line('ring-xde', u'Ring, XWF-XCE-XDE-XBG-XWF', [
     OpenLine('XSBK2#3_XSBK1#3', 53, 500, 2),
     Signal('XSBK1#3', 55, 'left'),
     OpenLine('XSBK1#3_XBA#3', 61, 2000, 2),
-    Junction('XBA_A#3', 68, u'Anst Stadt Berg'),
+    Siding('XBA_A#3', 68, u'Anst Stadt Berg'),
     OpenLine('XBA#3_XBG#3', 70, 500, 2),
     Signal('XBG_F#3', 72, 'right'),
     Signal('XBG_N#3', 72, 'left'),
@@ -221,7 +226,7 @@ add_line('ring-xde', u'Ring, XWF-XCE-XDE-XBG-XWF', [
     Signal('XBG_A#3', 74, 'left'),
     OpenLine('XBG#3_XLG#3', 78, 300, 2),
     Signal('XLG_8#3', 82, 'right'),
-    Junction('XLG#3', 83, u'Leopoldgrün'),
+    Junction('XLG#3', 83, u'Leopoldsgrün'),
     Signal('XLG_13#3', 84, 'left'),
     OpenLine('XLG#3_XWF#3', 91, 1800, 2),
     Signal('XWF_F#3', 98, 'right'),
