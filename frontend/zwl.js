@@ -154,12 +154,14 @@ ZWL.Graph = function (display, linename, viewcfg) {
     this.xstart = defaultval(viewcfg.xstart, 0);
     this.xend = defaultval(viewcfg.xend, 1);
     this.trains = {};
-    this.svg = this.display.svg.group();
+    this.svg = this.display.svg.group().addClass('graph').addClass('graph_' + linename);
 
     this.trainboxframe = this.svg.rect(0,0).addClass('trainboxframe');
     this.traincliprect = this.svg.rect(0,0);
     this.trainclip = this.svg.clip().add(this.traincliprect);
     this.trainbox = this.svg.group().addClass('trainbox');
+    this.trainpaths = this.trainbox.group().addClass('trainpaths');
+    this.trainlabels = this.trainbox.group().addClass('trainlabels');
 
     this.nowmarker = this.trainbox.line(-1,-1,-1,-1).addClass('nowmarker')
         .clipWith(this.trainclip);
@@ -488,16 +490,26 @@ ZWL.TrainDrawing = function (graph, trainnr) {
     this.graph = graph;
     this.train = graph.trains[trainnr];
 
-    this.labelsvg = this.graph.trainbox.group()
-        .addClass('trainlabelg').addClass('train'+ this.train.info.nr)
-        .attr('title', this.train.info.name)
-        .mouseover(this.mouseover.bind(this))
-        .mouseout(this.mouseout.bind(this));
-    this.pathsvg = this.graph.trainbox.group()
+    this.pathsvg = this.graph.trainpaths.group()
         .addClass('trainpathg').addClass('train' + this.train.info.nr)
-        .attr('title', this.train.info.name)
-        .mouseover(this.mouseover.bind(this))
-        .mouseout(this.mouseout.bind(this));
+        .attr('title', this.train.info.name);
+    this._add_mousehandlers(this.pathsvg);
+
+    this.labelsvg = this.graph.trainlabels.group()
+        .addClass('trainlabelg').addClass('train'+ this.train.info.nr)
+        .attr('title', this.train.info.name);
+
+    // precreate label (used multiple times by the segments)
+    this.label = {};
+    this.label.g = this.labelsvg.group().addClass('trainlabel');
+    this.label.nr = this.label.g.plain(this.train.info.nr.toString())
+        .move(this.graph.measures.trainlabelxmargin,
+              this.graph.measures.trainlabelymargin);
+    var bb = this.label.nr.bbox();
+    this.label.box = this.label.g.rect(
+        bb.width+this.graph.measures.trainlabelxmargin*2,
+        bb.height+this.graph.measures.trainlabelymargin*2).move(0,0).back();
+
     if ( this.train.info.category != null ) {
         this.pathsvg.addClass('category_' + this.train.info.category);
         this.labelsvg.addClass('category_' + this.train.info.category);
@@ -511,6 +523,13 @@ ZWL.TrainDrawing.prototype = {
             return new ZWL.TrainDrawingSegment(this, segment);
         }.bind(this));
     },
+    _add_mousehandlers: function () {
+        // add these to the individual elements, not the whole group
+        for ( var i in arguments ) {
+            arguments[i].on('mouseenter', this.mouseenter.bind(this));
+            arguments[i].on('mouseleave', this.mouseleave.bind(this));
+        }
+    },
     update: function () {
         if ( this.train.info.segments.length != this.segments.length ) {
             this.segments.map(function (segment) { segment.remove(); });
@@ -519,11 +538,11 @@ ZWL.TrainDrawing.prototype = {
             this.segments.map(function (segment) { segment.update(); });
         }
     },
-    mouseover: function () {
+    mouseenter: function () {
         this.pathsvg.addClass('selected').front();
         this.labelsvg.addClass('selected').front();
     },
-    mouseout: function () {
+    mouseleave: function () {
         this.pathsvg.removeClass('selected');
         this.labelsvg.removeClass('selected');
     },
@@ -553,17 +572,10 @@ ZWL.TrainDrawingSegment = function (drawing, segment) {
         .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastblur.mask);
 
-    this.label = {}
-    this.label.g = this.labelsvg.group().addClass('trainlabel');
-    this.label.nr = this.label.g.plain(this.train.info.nr)
-        .move(this.graph.measures.trainlabelxmargin,
-              this.graph.measures.trainlabelymargin);
-    var bb = this.label.nr.bbox();
-    this.label.box = this.label.g.rect(
-        bb.width+this.graph.measures.trainlabelxmargin*2,
-        bb.height+this.graph.measures.trainlabelymargin*2).back();
-    this.label.entry = this.labelsvg.use(this.label.g);
-    this.label.exit = this.labelsvg.use(this.label.g);
+    this.entrylabel = this.labelsvg.use(this.drawing.label.g);
+    this.exitlabel = this.labelsvg.use(this.drawing.label.g);
+    this.drawing._add_mousehandlers(this.entrylabel, this.exitlabel);
+
     this.update();
 }
 
@@ -594,8 +606,8 @@ ZWL.TrainDrawingSegment.prototype = {
         this.trainpath.plot(coordinates);
         this.trainpathbg.plot(coordinates);
 
-        this.reposition_label('entry', this.label.entry);
-        this.reposition_label('exit', this.label.exit);
+        this.reposition_label('entry', this.entrylabel);
+        this.reposition_label('exit', this.exitlabel);
     },
     reposition_label: function (mode, label) {
         if ( mode != 'entry' && mode != 'exit' )

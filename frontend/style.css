@@ -8,14 +8,14 @@ text { fill: white; }
 
 /* specific elements of zwl image */
 
-.trainpath { stroke: white; stroke-width: 1.5px; stroke-linecap: round; }
-.trainpathbg { stroke: white; stroke-width: 15px; stroke-opacity: .01; stroke-linecap: round; }
+.trainpath { stroke: white; stroke-width: 1.5px; stroke-linecap: round; pointer-events: none; }
+.trainpathbg { stroke: white; stroke-width: 15px; stroke-opacity: 0; pointer-events: stroke; stroke-linecap: round; }
 .trainpathg.selected .trainpath { stroke-width: 2.5px; }
 .trainlabelg.selected { opacity: 1; }
 
 .trainlabelg { opacity: .8; }
 .trainlabel rect { fill: #111; stroke: none; }
-.trainlabel text { fill: white; }
+.trainlabel text { fill: white; pointer-events: none; }
 
 .nowmarker { stroke: #bb0; stroke-width: 2px; }
 .pastblur { stroke: none; fill: white; }
