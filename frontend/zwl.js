@@ -163,6 +163,13 @@ ZWL.Graph = function (display, linename, viewcfg) {
     this.trainpaths = this.trainbox.group().addClass('trainpaths');
     this.trainlabels = this.trainbox.group().addClass('trainlabels');
 
+    // quickfix for firefox, see issue #24
+    this.trainboxframe.on('mouseenter', function() {
+        $('.trainlabelg.selected, .trainpathg.selected').each(function () {
+            // jquery doesn't really work inside svg
+            this.classList.remove('selected');
+        }); });
+
     this.nowmarker = this.trainbox.line(-1,-1,-1,-1).addClass('nowmarker')
         .clipWith(this.trainclip);
 
