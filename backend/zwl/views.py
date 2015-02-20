@@ -34,15 +34,15 @@ def get_graph_data(line):
                {
                  'timetable': [
                    {'loc':'XDE#1', 'arr_real':None, 'dep_real':13099020},
-                   {'str':'XDE#1_XCE#1'},
+                   {'line':'XDE#1_XCE#1'},
                    {'loc':'XCE#1', 'arr_real':13099200, 'dep_real':13099260},
-                   {'str':'XCE#1_XLG#1'},
-                   {'loc':'XLG#1', 'arr_real':None, 'dep_real':13099500},
-                   {'str':'XLG#1_XDE#2'},
+                   {'line':'XCE#1_XLG#1'},
+                   {'loc':'XLG#1', 'arr_real':13099500, 'dep_real':13099500},
+                   {'line':'XLG#1_XDE#2'},
                    {'loc':'XDE#2', 'arr_real':13099800, 'dep_real':None},
                  ],
                  'timetable_hash': 0,
-                 'direction': 'right', #TODO calculate from timetable
+                 'direction': 'right',
                },
              ],
              'comment': u'',
@@ -54,7 +54,7 @@ def get_graph_data(line):
                {
                  'timetable': [
                    {'loc':'XDE#2', 'arr_real':None, 'dep_real':13099440},
-                   {'str':'XLG#1_XDE#2'},
+                   {'line':'XLG#1_XDE#2'},
                    {'loc':'XLG#1', 'arr_real':13099740, 'dep_real':13099740},
                  ],
                  'timetable_hash': 0,
@@ -69,7 +69,9 @@ def get_graph_data(line):
                {
                  'timetable': [
                     {'loc':'XDE#1', 'arr_real':None, 'dep_real':13099000},
-                    {'str':'XLG#1_XDE#2'},
+                    {'line':'XDE#1_XCE#1', 'opposite':True},
+                    {'loc':'XCE#1', 'arr_real':13099140, 'dep_real':13099140},
+                    {'line':'XCE#1_XLG#1'},
                     {'loc':'XDE#2', 'arr_real':13099460, 'dep_real':None},
                  ],
                  'timetable_hash': 0,
@@ -149,7 +151,7 @@ def stylesheet():
                 else:
                     catstring = '.category_%s' % cat
 
-                yield '.theme_%s %s .trainpath { stroke: %s; }' \
+                yield '.theme_%s %s .trainpath line { stroke: %s; }' \
                     % (theme, catstring, color)
                 yield '.theme_%s %s .trainlabel text { fill: %s; }' \
                     % (theme, catstring, color)

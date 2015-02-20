@@ -90,6 +90,7 @@ ZWL.Display.prototype = {
     },
     timechange: function (starttime) {
         // this runs lots of times while the user moves the time axis, so keep it short!
+
         this.starttime = starttime;
 
         this.timeaxis.timechange();
@@ -568,15 +569,14 @@ ZWL.TrainDrawingSegment = function (drawing, segment) {
     this.display = drawing.graph.display;
     this.train = this.drawing.train;
     this.segment = segment;
-    this.points = null;
     this.pathsvg = drawing.pathsvg;
     this.labelsvg = drawing.labelsvg;
 
     // bg = invisible, thicker path to allow easier pointing
-    this.trainpathbg = this.pathsvg.polyline([[-1,-1]]).addClass('trainpathbg')
+    this.trainpath = this.pathsvg.group().addClass('trainpath')
         .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastblur.mask);
-    this.trainpath = this.pathsvg.polyline([[-1,-1]]).addClass('trainpath')
+    this.trainpathbg = this.pathsvg.polyline().addClass('trainpathbg')
         .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastblur.mask);
 
@@ -589,30 +589,70 @@ ZWL.TrainDrawingSegment = function (drawing, segment) {
 
 ZWL.TrainDrawingSegment.prototype = {
     update: function () {
-        var tt = this.segment.timetable;
-        this.points = [];
-        for ( var elm in tt ) {
-            if ( tt[elm]['loc'] ) {
-                if ( tt[elm]['arr_real'] != undefined )
-                    this.points.push([tt[elm]['loc'],
-                                      tt[elm]['arr_real']]);
-                if ( tt[elm]['dep_real'] != undefined &&
-                     tt[elm]['dep_real'] != tt[elm]['arr_real'] )
-                    this.points.push([tt[elm]['loc'],
-                                      tt[elm]['dep_real']]);
+        this.elements = [];
 
-                laststop = tt[elm];
+        var lastline = {};
+        var laststop;
+        for ( i in this.segment.timetable ) {
+            var tte = this.segment.timetable[i]
+            if ( tte.line ) {
+                lastline = tte;
+            } else if ( tte.loc ) {
+                // lastline may be empty as line timetable elements are optional
+                if ( laststop ) {
+                    this.elements.push({
+                        'line': lastline.line,
+                        'opposite': lastline.opposite,
+                        'start': laststop.loc,
+                        'dep_real': laststop.dep_real,
+                        'end': tte.loc,
+                        'arr_real': tte.arr_real,
+                    });
+                }
+                this.elements.push({
+                    'loc': tte.loc,
+                    'arr_real': tte.arr_real,
+                    'dep_real': tte.dep_real,
+                });
+                laststop = tte;
+                lastline = {}
             }
         }
 
         this.redraw();
     },
     redraw: function () {
-        var coordinates = this.points.map(function (p) {
-            return [this.graph.pos2x(p[0]), this.display.time2y(p[1])];
-        }, this);
-        this.trainpath.plot(coordinates);
-        this.trainpathbg.plot(coordinates);
+        this.trainpath.clear();
+
+        // draw trainpath, calculate coordinates (for bg and label positioning)
+        this.coordinates = [];
+        for ( var i in this.elements ) {
+            var elem = this.elements[i];
+            if ( 'line' in elem ) {
+                var x1 = this.graph.pos2x(elem.start);
+                var y1 = this.display.time2y(elem.dep_real);
+                var x2 = this.graph.pos2x(elem.end);
+                var y2 = this.display.time2y(elem.arr_real);
+
+                this.coordinates.push([x1, y1], [x2, y2]);
+
+                elem.path = this.trainpath.line(x1, y1, x2, y2);
+                if ( elem.opposite == true ) elem.path.addClass('opposite');
+
+            } else if ( 'loc' in elem
+                    && elem.arr_real != null
+                    && elem.dep_real != null
+                    && elem.arr_real != elem.dep_real ) {
+
+                var x = this.graph.pos2x(elem.loc);
+                var y1 = this.display.time2y(elem.arr_real);
+                var y2 = this.display.time2y(elem.dep_real);
+
+                elem.path = this.trainpath.line(x, y1, x, y2);
+                this.coordinates.push([x, y1], [x, y2]);
+            }
+        }
+        this.trainpathbg.plot(this.coordinates);
 
         this.reposition_labels();
     },
@@ -621,33 +661,37 @@ ZWL.TrainDrawingSegment.prototype = {
         this.reposition_label('exit', this.exitlabel);
     },
     reposition_label: function (mode, label) {
-        if ( mode != 'entry' && mode != 'exit' )
-            return console.error('no such mode: ' + mode);
-
-        var points;
+        var coordinates;
         if ( mode == 'entry') {
-            points = this.points;
+            coordinates = this.coordinates;
         } else if ( mode == 'exit') {
-            // start searching in the other direction
-            points = this.points.slice().reverse();
+            // same, we just search in the other direction
+            coordinates = this.coordinates.slice().reverse();
+        } else {
+            return console.error('no such mode: ' + mode);
         }
 
         var x = y = orientation = null;
 
         // first, check the simple case: train start/stops within graph
         // this avoids calculating tons of intersections where there are none.
-        // (`firststop` refers to the last element in the `exit` case.)
-        var firststop_pos = this.graph.line.getElement(points[0][0]).pos;
-        if ( points[0][1].within(this.display.starttime, this.display.endtime)
-             && firststop_pos.within(this.graph.xstart, this.graph.xend) ) {
-            x = this.graph.pos2x(firststop_pos);
-            y = this.display.time2y(points[0][1]);
+        // (remember `coordinates` is reversed in the `exit` case.)
+        if ( coordinates[0][1].within(
+                    this.display.time2y(this.display.starttime),
+                    this.display.time2y(this.display.endtime))
+                && coordinates[0][0].within(
+                    this.graph.pos2x(this.graph.xstart),
+                    this.graph.pos2x(this.graph.xend)) ) {
+            x = coordinates[0][0];
+            y = coordinates[0][1];
             if ( mode == 'entry' )
                 orientation = this.segment.direction == 'left' ? 'right' : 'left';
             else
                 orientation = this.segment.direction;
         }
         //TODO prevent execution of the else branch when the train is entirely outside the box
+        // (happens rarely however (only when changing the time) because
+        //  the backend does only return "in-graph" trains.)
         else {
             var x1, y1, x2, y2, int_x, int_y;
             var left_x = this.graph.pos2x(this.graph.xstart);
@@ -655,11 +699,11 @@ ZWL.TrainDrawingSegment.prototype = {
             var top_y = this.display.time2y(this.display.starttime);
             var bottom_y = this.display.time2y(this.display.endtime);
 
-            for ( var i = 1; i < this.points.length; i++ ) {
-                x1 = this.graph.pos2x(this.points[i-1][0]);
-                x2 = this.graph.pos2x(this.points[i][0]);
-                y1 = this.display.time2y(this.points[i-1][1]);
-                y2 = this.display.time2y(this.points[i][1]);
+            for ( var i = 1; i < coordinates.length; i++ ) {
+                x1 = coordinates[i-1][0];
+                y1 = coordinates[i-1][1];
+                x2 = coordinates[i][0];
+                y2 = coordinates[i][1];
 
                 // intersection with top / bottom / left / right edge, respectively
                 if ( mode == 'entry' ) {
@@ -675,7 +719,7 @@ ZWL.TrainDrawingSegment.prototype = {
                     if ( int_y = intersectvertseg(left_x, top_y, bottom_y, x1,y1,x2,y2) ) {
                         x = left_x, y = int_y, orientation = 'left'; break;
                     }
-                } else {
+                } else /* (dir=right and mode=exit) or (dir=left and mode entry) */ {
                     if ( int_y = intersectvertseg(right_x, top_y, bottom_y, x1,y1,x2,y2) ) {
                         x = right_x, y = int_y, orientation = 'right'; break;
                     }

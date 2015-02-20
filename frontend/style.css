@@ -8,12 +8,13 @@ text { fill: white; }
 
 /* specific elements of zwl image */
 
-.trainpath { stroke: white; stroke-width: 1.5px; stroke-linecap: round; pointer-events: none; }
+.trainpath line { stroke: white; stroke-width: 1.5px; stroke-linecap: round; pointer-events: none; }
 .trainpathbg { stroke: white; stroke-width: 15px; stroke-opacity: 0; pointer-events: stroke; stroke-linecap: round; }
-.trainpathg.selected .trainpath { stroke-width: 2.5px; }
-.trainlabelg.selected { opacity: 1; }
+.trainpathg.selected .trainpath line { stroke-width: 2.5px; }
+.trainpath line.opposite { stroke-dasharray: 6,8; }
 
 .trainlabelg { opacity: .8; }
+.trainlabelg.selected { opacity: 1; }
 .trainlabel rect { fill: #111; stroke: none; }
 .trainlabel text { fill: white; pointer-events: none; }
 
