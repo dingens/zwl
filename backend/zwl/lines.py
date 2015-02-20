@@ -179,7 +179,7 @@ add_line('sample', u'Beispielsträcke', [
     OpenLine('XDE#1_XCE#1', 15, 3000, 2),
     Station('XCE#1', 30, u'Cella'),
     OpenLine('XCE#1_XLG#1', 40, 2000, 2),
-    Station('XLG#1', 50, u'Leopoldgrün'),
+    Junction('XLG#1', 50, u'Leopoldgrün'),
     OpenLine('XLG#1_XBG#2', 65, 1000, 2),
     Station('XBG#2', 60, u'Berg'),
     OpenLine('XBG#2_XDE#2', 80, 4000, 2),

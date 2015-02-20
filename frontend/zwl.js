@@ -125,7 +125,7 @@ ZWL.Display.prototype = {
     },
     measures: {
         graphtopmargin: 45,
-        graphbottommargin: 45,
+        graphbottommargin: 50,
         graphhorizmargin: 70,
         graphminwidth: 200,
         timeaxiswidth: 75,
@@ -300,8 +300,7 @@ ZWL.Graph.prototype = {
     reposition_train_labels: function () {
         for ( var tnr in this.trains ) {
             var train = this.trains[tnr];
-            // TODO: don't redraw the whole train path, only the labels
-            train.drawing.update();
+            train.drawing.reposition_labels();
         }
     },
     fetch_trains: function () {
@@ -531,11 +530,13 @@ ZWL.TrainDrawing.prototype = {
         }.bind(this));
     },
     _add_mousehandlers: function () {
-        // add these to the individual elements, not the whole group
         for ( var i in arguments ) {
             arguments[i].on('mouseenter', this.mouseenter.bind(this));
             arguments[i].on('mouseleave', this.mouseleave.bind(this));
         }
+    },
+    reposition_labels: function () {
+        this.segments.map(function (segment) { segment.reposition_labels(); });
     },
     update: function () {
         if ( this.train.info.segments.length != this.segments.length ) {
@@ -613,6 +614,9 @@ ZWL.TrainDrawingSegment.prototype = {
         this.trainpath.plot(coordinates);
         this.trainpathbg.plot(coordinates);
 
+        this.reposition_labels();
+    },
+    reposition_labels: function () {
         this.reposition_label('entry', this.entrylabel);
         this.reposition_label('exit', this.exitlabel);
     },
