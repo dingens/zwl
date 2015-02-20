@@ -123,6 +123,10 @@ def frontend(subdir='', filename=None):
         os.path.join(app.root_path, os.pardir, os.pardir, 'frontend'))
     return send_from_directory(os.path.join(frontend_dir, subdir), filename)
 
+@app.route('/favicon.ico')
+def favicon():
+    return frontend(filename='favicon.ico')
+
 @app.route('/_variables.js')
 def js_variables():
     vars = {

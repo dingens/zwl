@@ -682,6 +682,7 @@ ZWL.TrainDrawingSegment.prototype = {
                 && coordinates[0][0].within(
                     this.graph.pos2x(this.graph.xstart),
                     this.graph.pos2x(this.graph.xend)) ) {
+            //TODO use `[x,y] =` as soon as chrome supports it. same further below
             x = coordinates[0][0];
             y = coordinates[0][1];
             if ( mode == 'entry' )
