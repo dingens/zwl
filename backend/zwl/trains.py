@@ -1,5 +1,6 @@
 # -*- coding: utf8 -*-
 import itertools
+import operator
 from collections import defaultdict, deque, OrderedDict
 from datetime import date, datetime, time
 from zwl import app, db
@@ -95,7 +96,7 @@ def make_timetable(train, timetable_entries, line):
              - `direction` (either `left` or `right`)
              - `timetable` (list of dicts, one per location)
     """
-    timetable_entries.sort(key=lambda e: (e.arr_real, e.dep_real))
+    timetable_entries.sort(key=operator.attrgetter('sorttime'))
     timetable_locations = [e.loc for e in timetable_entries]
 
     def _add(seg, loc, tte, **kwargs):
