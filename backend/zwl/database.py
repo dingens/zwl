@@ -5,38 +5,6 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from zwl import app, db
 
 
-class TimetableEntry(db.Model):
-    __tablename__ = 'fahrplan_sessionfahrplan' if app.config['USE_SESSION_TIMETABLE'] else 'fzm'
-
-    id = db.Column(db.Integer, primary_key=True)
-    train_id = db.Column('zug_id', db.Integer)
-    loc = db.Column('betriebsstelle', db.String(10))
-    arr_plan = db.Column('ankunft_plan', db.Time)
-    dep_plan = db.Column('abfahrt_plan', db.Time)
-    track = db.Column('gleis', db.Integer)
-    direction_code = db.Column('fahrtrichtung', db.Integer)
-    sorttime = db.Column('sortierzeit', db.Time)
-
-    if app.config['USE_SESSION_TIMETABLE']:
-        arr_want = db.Column('ankunft_soll', db.Time)
-        arr_real = db.Column('ankunft_ist', db.Time)
-        dep_want = db.Column('abfahrt_soll', db.Time)
-        dep_real = db.Column('abfahrt_ist', db.Time)
-        track_want = db.Column('gleis_soll', db.Integer)
-        track_real = db.Column('gleis_ist', db.Integer)
-    else:
-        arr_want = arr_real = property(arr_plan)
-        dep_want = dep_real = property(dep_plan)
-        track_want = track_real = property(track_plan)
-
-    def __repr__(self):
-        return '<%s train#%s at %s>' \
-            % (self.__class__.__name__, self.train_id, self.loc)
-
-    @property #TODO: use TypeDecorator
-    def direction(self):
-        return {0: 'left', 1: 'right', 10: 'left', 11: 'right'}[self.direction_code]
-
 class TrainType(db.Model):
     __tablename__ = 'zuege_zuggattungen'
     id = db.Column(db.Integer, primary_key=True)
@@ -66,3 +34,34 @@ class Train(db.Model):
     def __repr__(self):
         return '<%s #%s (%s %d)>' \
             % (self.__class__.__name__, self.id, self.type, self.nr)
+
+
+class TimetableEntry(db.Model):
+    __tablename__ = 'fahrplan_sessionfahrplan' if app.config['USE_SESSION_TIMETABLE'] else 'fzm'
+
+    id = db.Column(db.Integer, primary_key=True)
+    train_id = db.Column('zug_id', db.Integer, db.ForeignKey(Train.id))
+    loc = db.Column('betriebsstelle', db.String(10))
+    arr_plan = db.Column('ankunft_plan', db.Time)
+    dep_plan = db.Column('abfahrt_plan', db.Time)
+    track = db.Column('gleis', db.Integer)
+    sorttime = db.Column('sortierzeit', db.Time)
+
+    if app.config['USE_SESSION_TIMETABLE']:
+        arr_want = db.Column('ankunft_soll', db.Time)
+        arr_real = db.Column('ankunft_ist', db.Time)
+        dep_want = db.Column('abfahrt_soll', db.Time)
+        dep_real = db.Column('abfahrt_ist', db.Time)
+        track_want = db.Column('gleis_soll', db.Integer)
+        track_real = db.Column('gleis_ist', db.Integer)
+    else:
+        arr_want = arr_real = property(arr_plan)
+        dep_want = dep_real = property(dep_plan)
+        track_want = track_real = property(track_plan)
+
+    train = db.relationship(Train,
+        backref=db.backref('timetable_entries', lazy='dynamic'))
+
+    def __repr__(self):
+        return '<%s train#%s at %s>' \
+            % (self.__class__.__name__, self.train_id, self.loc)
