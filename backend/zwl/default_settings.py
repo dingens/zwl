@@ -17,3 +17,6 @@ USE_SESSION_TIMETABLE = True
 # Colors for the different train categories (see `TrainType.category`).
 TRAIN_COLOR_MAP_DARK = {'nv':'#f44', 'fv':'#48f', 'gv':'#2f6',
                         'lz':'#fff', 'sz':'#bd5', None:'#fff'}
+
+# IP address or hostname and port of the clock server
+CLOCK_SERVER = ('192.168.17.5', 4711)

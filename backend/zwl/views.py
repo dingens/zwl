@@ -1,5 +1,6 @@
 # -*- coding: utf8 -*-
 import os
+from datetime import datetime
 from flask import abort, send_from_directory, Response, json, request, jsonify
 from time import sleep
 from werkzeug.exceptions import NotFound
@@ -7,7 +8,7 @@ from zwl import app
 from zwl.database import Train
 from zwl.lines import lines, get_line
 from zwl.trains import get_train_ids_within_timeframe, get_train_information
-from zwl.utils import js2time, time2js
+from zwl.utils import js2time, time2js, get_time
 
 @app.route('/lines/<key>.json')
 def get_lines(key=None):
@@ -102,6 +103,16 @@ def get_graph_data(line):
         starttime=time2js(starttime),
         endtime=time2js(endtime),
     )
+
+
+@app.route('/time')
+def time_plain():
+    # debug method, json api to come
+    state, time = get_time()
+    timestr = time.strftime('%F %T')
+
+    return Response('state: %s\ntime:  %s' % (state, timestr),
+                    mimetype='text/plain')
 
 
 @app.route('/')
