@@ -50,15 +50,15 @@ class TimetableEntry(db.Model):
     if app.config['USE_SESSION_TIMETABLE']:
         arr_want = db.Column('ankunft_soll', db.Time)
         arr_real = db.Column('ankunft_ist', db.Time)
-        arr_prog = db.Column('ankunft_prognose', db.Time)
+        arr_pred = db.Column('ankunft_prognose', db.Time)
         dep_want = db.Column('abfahrt_soll', db.Time)
         dep_real = db.Column('abfahrt_ist', db.Time)
-        dep_prog = db.Column('abfahrt_prognose', db.Time)
+        dep_pred = db.Column('abfahrt_prognose', db.Time)
         track_want = db.Column('gleis_soll', db.Integer)
         track_real = db.Column('gleis_ist', db.Integer)
     else:
-        arr_want = arr_real = arr_prog = property(arr_plan)
-        dep_want = dep_real = dep_prog = property(dep_plan)
+        arr_want = arr_real = arr_pred = property(arr_plan)
+        dep_want = dep_real = dep_pred = property(dep_plan)
         track_want = track_real = property(track_plan)
 
     train = db.relationship(Train,
