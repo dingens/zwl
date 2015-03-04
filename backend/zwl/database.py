@@ -44,19 +44,21 @@ class TimetableEntry(db.Model):
     loc = db.Column('betriebsstelle', db.String(10))
     arr_plan = db.Column('ankunft_plan', db.Time)
     dep_plan = db.Column('abfahrt_plan', db.Time)
-    track = db.Column('gleis', db.Integer)
+    track_plan = db.Column('gleis_plan', db.Integer)
     sorttime = db.Column('sortierzeit', db.Time)
 
     if app.config['USE_SESSION_TIMETABLE']:
         arr_want = db.Column('ankunft_soll', db.Time)
         arr_real = db.Column('ankunft_ist', db.Time)
+        arr_prog = db.Column('ankunft_prognose', db.Time)
         dep_want = db.Column('abfahrt_soll', db.Time)
         dep_real = db.Column('abfahrt_ist', db.Time)
+        dep_prog = db.Column('abfahrt_prognose', db.Time)
         track_want = db.Column('gleis_soll', db.Integer)
         track_real = db.Column('gleis_ist', db.Integer)
     else:
-        arr_want = arr_real = property(arr_plan)
-        dep_want = dep_real = property(dep_plan)
+        arr_want = arr_real = arr_prog = property(arr_plan)
+        dep_want = dep_real = dep_prog = property(dep_plan)
         track_want = track_real = property(track_plan)
 
     train = db.relationship(Train,
