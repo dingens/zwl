@@ -28,7 +28,7 @@ class TestTrains(unittest.TestCase):
         t1 = self.t1.id
         db.session.add_all([
             self.t1,
-            TimetableEntry(train_id=t1, loc='XWF', arr_plan=None,        dep_plan=time(15,30), sorttime=time(15,30), direction_code=11),
+            TimetableEntry(train_id=t1, loc='XWF', arr_plan=None,        dep_plan=time(15,30), sorttime=time(15,30)),
             TimetableEntry(train_id=t1, loc='XLG', arr_plan=time(15,34), dep_plan=time(15,34), sorttime=time(15,34)),
             TimetableEntry(train_id=t1, loc='XBG', arr_plan=time(15,35), dep_plan=time(15,36), sorttime=time(15,36)),
             TimetableEntry(train_id=t1, loc='XDE', arr_plan=time(15,39), dep_plan=time(15,40), sorttime=time(15,40)),
@@ -38,7 +38,7 @@ class TestTrains(unittest.TestCase):
         t2 = self.t2.id
         db.session.add_all([
             self.t2,
-            TimetableEntry(train_id=t2, loc='XPN', arr_plan=None,        dep_plan=time(16,21), sorttime=time(16,21), direction_code=11),
+            TimetableEntry(train_id=t2, loc='XPN', arr_plan=None,        dep_plan=time(16,21), sorttime=time(16,21)),
             TimetableEntry(train_id=t2, loc='XLG', arr_plan=time(16,23), dep_plan=time(16,23), sorttime=time(16,23)),
             TimetableEntry(train_id=t2, loc='XWF', arr_plan=time(16,27), dep_plan=time(16,30), sorttime=time(16,30)),
             TimetableEntry(train_id=t2, loc='XCE', arr_plan=time(16,32), dep_plan=time(16,33), sorttime=time(16,33)),
