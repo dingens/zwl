@@ -98,6 +98,40 @@ class TestTrains(ZWLTestCase):
         self._teardown_database()
 
 
+class TestDatabase(ZWLTestCase):
+    def setUp(self):
+        self._setup_database()
+
+        self.ic = TrainType(name='IC')
+        self.re = TrainType(name='RE')
+        db.session.add_all([self.ic, self.re])
+        db.session.commit()
+        db.session.add_all([
+            MinimumStopTime(999, None, None, None),
+            MinimumStopTime(200, self.ic.id, None, None),
+            MinimumStopTime(100, None, 'XPN', None),
+            MinimumStopTime(101, None, 'XPN', 1),
+            MinimumStopTime(103, None, 'XPN', 3),
+            MinimumStopTime(203, self.ic.id, 'XPN', 3),
+        ])
+        db.session.commit()
+
+    def test_minimum_stop_time(self):
+        self.assertEquals(MinimumStopTime.lookup(self.ic, None), 200)
+        self.assertEquals(MinimumStopTime.lookup(self.re, None), 999)
+        self.assertEquals(MinimumStopTime.lookup(self.ic, 'XPN'), 100)
+        self.assertEquals(MinimumStopTime.lookup(self.re, 'XPN'), 100)
+        self.assertEquals(MinimumStopTime.lookup(self.ic, 'XPN', 2), 100)
+        self.assertEquals(MinimumStopTime.lookup(self.re, 'XPN', 2), 100)
+        self.assertEquals(MinimumStopTime.lookup(self.ic, 'XPN', 3), 203)
+        self.assertEquals(MinimumStopTime.lookup(self.re, 'XPN', 3), 103)
+        self.assertEquals(MinimumStopTime.lookup(self.ic, 'XDE'), 200)
+        self.assertEquals(MinimumStopTime.lookup(self.ic, 'XDE', 1), 200)
+        self.assertEquals(MinimumStopTime.lookup(self.re, 'XDE'), 999)
+        self.assertEquals(MinimumStopTime.lookup(self.re, 'XDE', 1), 999)
+
+    def tearDown(self):
+        self._teardown_database()
 
 class TestUtils(ZWLTestCase):
     def test_timediff(self):

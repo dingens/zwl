@@ -2,6 +2,7 @@
 from datetime import datetime
 from sqlalchemy import TypeDecorator
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.sql.functions import coalesce
 from zwl import app, db
 
 
@@ -67,3 +68,56 @@ class TimetableEntry(db.Model):
     def __repr__(self):
         return '<%s train#%s at %s>' \
             % (self.__class__.__name__, self.train_id, self.loc)
+
+
+class MinimumStopTime(db.Model):
+    __tablename__ = 'fahrplan_mindesthaltezeiten'
+
+    id = db.Column(db.Integer, primary_key=True)
+    minimum_stop_time = db.Column('mindesthaltezeit' , db.Integer)
+    loc = db.Column('betriebsstelle_kuerzel', db.String(5))
+    track = db.Column('gleis', db.Integer)
+    traintype_id = db.Column('zuggattungen_id', db.Integer,
+        db.ForeignKey(TrainType.id))
+
+    traintype = db.relationship(TrainType)
+
+    def __init__(self, minimum_stop_time=None, traintype=None, loc=None, track=None, **kwargs):
+        if isinstance(traintype, TrainType):
+            traintype = traintype.id
+        super(MinimumStopTime, self).__init__(traintype_id=traintype, loc=loc,
+                track=track, minimum_stop_time=minimum_stop_time, **kwargs)
+
+    def __repr__(self):
+        return '<MinimumStopTime=%s%s%s%s>' % (
+                self.minimum_stop_time,
+                ' %s' % self.traintype.name if self.traintype else '',
+                ' @%s' % self.loc if self.loc else '',
+                '[%s]' % self.track if self.track else '',
+        )
+
+    @classmethod
+    def lookup(cls, traintype, loc, track=None):
+        """
+        Find the minimum stopping time for a train of type `traintype` at
+        `loc` and (optionally) `track`.
+        :param traintype: Train object, TrainType object, or TrainType id
+        """
+        if isinstance(traintype, Train):
+            traintype = traintype.type_id
+        elif isinstance(traintype, TrainType):
+            traintype = traintype.id
+        if track is not None and loc is None:
+            raise ValueError('loc cannot be None when track is not')
+
+        # rank lines by how good they fit. If the field we look at is NULL,
+        # its line is ranked between matching (1) and contradicting (0) lines,
+        # by using a ordering value of 0.5. That way default entries can be
+        # defined by setting to NULL in some or all columns.
+        q = db.session.query(cls.minimum_stop_time)
+        if track is not None:
+            q = q.order_by(coalesce((cls.loc==loc) & (cls.track==track), 0.5).desc())
+        q = q.order_by(coalesce((cls.loc==loc) & cls.track.is_(None), 0.5).desc())
+        q = q.order_by(coalesce(cls.traintype_id==traintype, 0.5).desc())
+
+        return db.session.execute(q).scalar()
