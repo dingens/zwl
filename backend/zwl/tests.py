@@ -10,13 +10,22 @@ from zwl.database import *
 from zwl.lines import get_line
 from zwl.utils import timediff
 
-class TestTrains(unittest.TestCase):
-    def setUp(self):
+class ZWLTestCase(unittest.TestCase):
+    def _setup_database(self):
         self.db_fd, self.db = tempfile.mkstemp()
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///%s' % self.db
         app.config['TESTING'] = True
         self.app = app.test_client()
         db.metadata.create_all(bind=db.engine)
+
+    def _teardown_database(self):
+        os.close(self.db_fd)
+        #TODO: unlinking breaks everything?!
+        #os.unlink(self.db)
+
+class TestTrains(ZWLTestCase):
+    def setUp(self):
+        self._setup_database()
 
         ice = TrainType(name='ICE')
         re = TrainType(name='RE')
@@ -27,7 +36,6 @@ class TestTrains(unittest.TestCase):
 
         t1 = self.t1.id
         db.session.add_all([
-            self.t1,
             TimetableEntry(train_id=t1, loc='XWF', arr_plan=None,        dep_plan=time(15,30), sorttime=time(15,30)),
             TimetableEntry(train_id=t1, loc='XLG', arr_plan=time(15,34), dep_plan=time(15,34), sorttime=time(15,34)),
             TimetableEntry(train_id=t1, loc='XBG', arr_plan=time(15,35), dep_plan=time(15,36), sorttime=time(15,36)),
@@ -37,7 +45,6 @@ class TestTrains(unittest.TestCase):
 
         t2 = self.t2.id
         db.session.add_all([
-            self.t2,
             TimetableEntry(train_id=t2, loc='XPN', arr_plan=None,        dep_plan=time(16,21), sorttime=time(16,21)),
             TimetableEntry(train_id=t2, loc='XLG', arr_plan=time(16,23), dep_plan=time(16,23), sorttime=time(16,23)),
             TimetableEntry(train_id=t2, loc='XWF', arr_plan=time(16,27), dep_plan=time(16,30), sorttime=time(16,30)),
@@ -87,13 +94,12 @@ class TestTrains(unittest.TestCase):
         locs = line.locations_extended_between(.2999999999999, .6000000000001)
         assert [l.id for l in locs] == ['XCE#1', 'XLG#1', 'XBG#2']
 
-
     def tearDown(self):
-        os.close(self.db_fd)
-        #os.unlink(self.db)
+        self._teardown_database()
 
 
-class TestUtils(unittest.TestCase):
+
+class TestUtils(ZWLTestCase):
     def test_timediff(self):
         self.assertEqual(timediff(time(19,20), time(17,40)),
                          timedelta(minutes=100))
