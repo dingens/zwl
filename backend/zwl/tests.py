@@ -1,13 +1,14 @@
 #!/usr/bin/env python2
 # -*- coding: utf8 -*-
-from zwl import app, db, trains
-from zwl.database import *
-from zwl.lines import get_line
-from datetime import time
 import itertools
 import os
 import tempfile
 import unittest
+from datetime import timedelta, time
+from zwl import app, db, trains
+from zwl.database import *
+from zwl.lines import get_line
+from zwl.utils import timediff
 
 class TestTrains(unittest.TestCase):
     def setUp(self):
@@ -90,6 +91,20 @@ class TestTrains(unittest.TestCase):
     def tearDown(self):
         os.close(self.db_fd)
         #os.unlink(self.db)
+
+
+class TestUtils(unittest.TestCase):
+    def test_timediff(self):
+        self.assertEqual(timediff(time(19,20), time(17,40)),
+                         timedelta(minutes=100))
+        with self.assertRaises(ValueError):
+            timediff(time(19,20), time(20,30))
+        with self.assertRaises(ValueError):
+            timediff(time(19,20), time(10,30))
+
+        # not implemented yet
+        #self.assertEqual(timediff(time(1,15), time(22,45)),
+        #                 timedelta(minutes=150))
 
 
 if __name__ == '__main__':

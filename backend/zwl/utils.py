@@ -1,7 +1,7 @@
 # -*- coding: utf8 -*-
 import socket
 from contextlib import contextmanager
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from zwl import app
 
 def time2js(t):
@@ -24,6 +24,30 @@ def js2time(s):
 
     #TODO after-midnight and weekday treatment
     return datetime.fromtimestamp(float(s)).time()
+
+def timediff(a, b):
+    """
+    `a - b` for `datetime.time` objects.
+
+    It is required that a > b and that both values are less than 8 hours apart.
+
+    N.b.: in the future, special treatment for midnight-wrapping arguments may
+    be added (thus `timediff(time(1), time(23))` may be valid, returning 2h).
+    """
+    _LIMIT = timedelta(hours=8)
+
+    if a < b:
+        #TODO midnight support
+        raise ValueError("%r < %r" % (a, b))
+
+    aa = datetime.combine(date(1,1,1), a)
+    bb = datetime.combine(date(1,1,1), b)
+
+    diff = aa - bb
+    if diff > _LIMIT:
+        raise ValueError("more than 8 hours apart: %r %r" % (a, b))
+
+    return diff
 
 
 class ClockConnection(object):
