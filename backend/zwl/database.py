@@ -46,6 +46,8 @@ class TimetableEntry(db.Model):
     arr_plan = db.Column('ankunft_plan', db.Time)
     dep_plan = db.Column('abfahrt_plan', db.Time)
     track_plan = db.Column('gleis_plan', db.Integer)
+    min_ridetime = db.Column('min_fahrzeit', db.Integer) # from here to next
+    min_stoptime = db.Column('min_haltezeit', db.Integer)
     sorttime = db.Column('sortierzeit', db.Time)
 
     if app.config['USE_SESSION_TIMETABLE']:
