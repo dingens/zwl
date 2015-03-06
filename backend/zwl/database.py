@@ -75,9 +75,9 @@ class MinimumStopTime(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     minimum_stop_time = db.Column('mindesthaltezeit' , db.Integer)
-    loc = db.Column('betriebsstelle_kuerzel', db.String(5))
+    loc = db.Column('betriebsstelle', db.String(5))
     track = db.Column('gleis', db.Integer)
-    traintype_id = db.Column('zuggattungen_id', db.Integer,
+    traintype_id = db.Column('zuggattung_id', db.Integer,
         db.ForeignKey(TrainType.id))
 
     traintype = db.relationship(TrainType)
@@ -101,6 +101,10 @@ class MinimumStopTime(db.Model):
         """
         Find the minimum stopping time for a train of type `traintype` at
         `loc` and (optionally) `track`.
+
+        Important: There must be a fallback (None, None, None) entry in the
+        database, else incorrect results will be returned by `lookup()`.
+
         :param traintype: Train object, TrainType object, or TrainType id
         """
         if isinstance(traintype, Train):
@@ -120,4 +124,7 @@ class MinimumStopTime(db.Model):
         q = q.order_by(coalesce((cls.loc==loc) & cls.track.is_(None), 0.5).desc())
         q = q.order_by(coalesce(cls.traintype_id==traintype, 0.5).desc())
 
-        return db.session.execute(q).scalar()
+        result = db.session.execute(q).scalar()
+        if result is None:
+            raise ValueError('No minimum stop time defined')
+        return result
