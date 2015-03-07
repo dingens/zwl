@@ -359,6 +359,9 @@ ZWL.Graph.prototype = {
         var elm = this.line.getElement(id);
         return (elm.pos-this.xstart) * this.drawwidth;
     },
+    loc2pos: function(loc) {
+        return this.line.getElement(loc).pos;
+    },
     _parse_viewcfg: function (raw) {
         if ( raw.length == 0 )
             return {}
@@ -626,34 +629,45 @@ ZWL.TrainDrawingSegment.prototype = {
     redraw: function () {
         this.trainpath.clear();
 
-        // draw trainpath, calculate coordinates (for bg and label positioning)
-        this.coordinates = [];
+        // check if the segment is completely out of the box and we don't need
+        // to draw it at all
+        var outside = true;
         for ( var i in this.elements ) {
             var elem = this.elements[i];
-            if ( 'line' in elem ) {
-                var x1 = this.graph.pos2x(elem.start);
-                var y1 = this.display.time2y(elem.dep_real);
-                var x2 = this.graph.pos2x(elem.end);
-                var y2 = this.display.time2y(elem.arr_real);
-
-                this.coordinates.push([x1, y1], [x2, y2]);
-
-                elem.path = this.trainpath.line(x1, y1, x2, y2);
-                if ( elem.opposite == true ) elem.path.addClass('opposite');
-
-            } else if ( 'loc' in elem
-                    && elem.arr_real != null
-                    && elem.dep_real != null
-                    && elem.arr_real != elem.dep_real ) {
-
-                var x = this.graph.pos2x(elem.loc);
-                var y1 = this.display.time2y(elem.arr_real);
-                var y2 = this.display.time2y(elem.dep_real);
-
-                elem.path = this.trainpath.line(x, y1, x, y2);
-                this.coordinates.push([x, y1], [x, y2]);
+            if ( 'loc' in elem && this.graph.loc2pos(elem.loc).between(this.graph.xstart, this.graph.xend) ) {
+                outside = false;
+                break;
             }
         }
+        // draw trainpath, calculate coordinates (for bg and label positioning)
+        this.coordinates = [];
+        if ( !outside )
+            for ( var i in this.elements ) {
+                var elem = this.elements[i];
+                if ( 'line' in elem ) {
+                    var x1 = this.graph.pos2x(elem.start);
+                    var y1 = this.display.time2y(elem.dep_real);
+                    var x2 = this.graph.pos2x(elem.end);
+                    var y2 = this.display.time2y(elem.arr_real);
+
+                    this.coordinates.push([x1, y1], [x2, y2]);
+
+                    elem.path = this.trainpath.line(x1, y1, x2, y2);
+                    if ( elem.opposite == true ) elem.path.addClass('opposite');
+
+                } else if ( 'loc' in elem
+                        && elem.arr_real != null
+                        && elem.dep_real != null
+                        && elem.arr_real != elem.dep_real ) {
+
+                    var x = this.graph.pos2x(elem.loc);
+                    var y1 = this.display.time2y(elem.arr_real);
+                    var y2 = this.display.time2y(elem.dep_real);
+
+                    elem.path = this.trainpath.line(x, y1, x, y2);
+                    this.coordinates.push([x, y1], [x, y2]);
+                }
+            }
         this.trainpathbg.plot(this.coordinates);
 
         this.reposition_labels();
@@ -675,10 +689,13 @@ ZWL.TrainDrawingSegment.prototype = {
 
         var x = y = orientation = null;
 
+        // leave those vars null if the segment is not to be drawn
+        if ( coordinates.length == 0 ) {
+        }
         // first, check the simple case: train start/stops within graph
         // this avoids calculating tons of intersections where there are none.
         // (remember `coordinates` is reversed in the `exit` case.)
-        if ( coordinates[0][1].within(
+        else if ( coordinates[0][1].within(
                     this.display.time2y(this.display.starttime),
                     this.display.time2y(this.display.endtime))
                 && coordinates[0][0].within(
