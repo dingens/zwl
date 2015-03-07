@@ -559,6 +559,8 @@ ZWL.TrainDrawing.prototype = {
         this.segments.map(function (segment) { segment.redraw(); });
     },
     remove: function () {
+        this.pathsvg.remove();
+        this.labelsvg.remove();
         this.segments.map(function (segment) { segment.remove(); });
     },
 }
@@ -747,7 +749,6 @@ ZWL.TrainDrawingSegment.prototype = {
     },
 
     remove: function () {
-        this.svg.remove();
     },
 }
 
