@@ -9,6 +9,7 @@ from datetime import timedelta, time
 from zwl import app, db, trains
 from zwl.database import *
 from zwl.lines import get_line
+from zwl.predict import Manager, Journey
 from zwl.utils import MidnightWarning, timeadd, timediff
 
 class ZWLTestCase(unittest.TestCase):
@@ -33,7 +34,7 @@ class TestTrains(ZWLTestCase):
         self.t1 = Train(nr=700, type_obj=ice)
         self.t2 = Train(nr=2342, type_obj=re)
         db.session.add_all([ice, re, self.t1, self.t2])
-        db.session.commit()
+        db.session.flush()
 
         t1 = self.t1.id
         db.session.add_all([
@@ -52,7 +53,7 @@ class TestTrains(ZWLTestCase):
             TimetableEntry(train_id=t2, loc='XCE', arr_plan=time(16,32), dep_plan=time(16,33), sorttime=time(16,33)),
             TimetableEntry(train_id=t2, loc='XDE', arr_plan=time(16,36), dep_plan=None,        sorttime=time(16,36)),
         ])
-        db.session.commit()
+        db.session.flush()
 
     def test_get_train_ids_within_timeframe(self):
         ids = trains.get_train_ids_within_timeframe(time(15,40), time(16,00), get_line('sample'))
@@ -106,20 +107,20 @@ class TestDatabase(ZWLTestCase):
         self.ic = TrainType(name='IC')
         self.re = TrainType(name='RE')
         db.session.add_all([self.ic, self.re])
-        db.session.commit()
+        db.session.flush()
         db.session.add_all([
-            MinimumStopTime(999, None, None, None),
+            MinimumStopTime(45, None, None, None),
             MinimumStopTime(200, self.ic.id, None, None),
             MinimumStopTime(100, None, 'XPN', None),
             MinimumStopTime(101, None, 'XPN', 1),
             MinimumStopTime(103, None, 'XPN', 3),
             MinimumStopTime(203, self.ic.id, 'XPN', 3),
         ])
-        db.session.commit()
+        db.session.flush()
 
     def test_minimum_stop_time(self):
         self.assertEquals(MinimumStopTime.lookup(self.ic, None), 200)
-        self.assertEquals(MinimumStopTime.lookup(self.re, None), 999)
+        self.assertEquals(MinimumStopTime.lookup(self.re, None), 45)
         self.assertEquals(MinimumStopTime.lookup(self.ic, 'XPN'), 100)
         self.assertEquals(MinimumStopTime.lookup(self.re, 'XPN'), 100)
         self.assertEquals(MinimumStopTime.lookup(self.ic, 'XPN', 2), 100)
@@ -128,8 +129,8 @@ class TestDatabase(ZWLTestCase):
         self.assertEquals(MinimumStopTime.lookup(self.re, 'XPN', 3), 103)
         self.assertEquals(MinimumStopTime.lookup(self.ic, 'XDE'), 200)
         self.assertEquals(MinimumStopTime.lookup(self.ic, 'XDE', 1), 200)
-        self.assertEquals(MinimumStopTime.lookup(self.re, 'XDE'), 999)
-        self.assertEquals(MinimumStopTime.lookup(self.re, 'XDE', 1), 999)
+        self.assertEquals(MinimumStopTime.lookup(self.re, 'XDE'), 45)
+        self.assertEquals(MinimumStopTime.lookup(self.re, 'XDE', 1), 45)
 
     def tearDown(self):
         self._teardown_database()
@@ -159,6 +160,104 @@ class TestUtils(ZWLTestCase):
         with self.assertRaises(ValueError):
             timeadd(time(10,20), timedelta(hours=9))
 
+class TestPredict(ZWLTestCase):
+    maxDiff = 2000
+
+    def setUp(self):
+        self._setup_database()
+
+        ice = TrainType(name='ICE')
+        mst = MinimumStopTime(45, None, None, None)
+        self.t1 = Train(nr=102, type_obj=ice)
+        db.session.add_all([ice, mst, self.t1])
+        db.session.flush()
+
+        t1 = self.t1.id
+        self.t1_timetable = {
+            'XWF': TimetableEntry(train_id=t1, loc='XWF', sorttime=time(15,30), arr_want=None,        dep_want=time(15,30)),
+            'XLG': TimetableEntry(train_id=t1, loc='XLG', sorttime=time(15,34), arr_want=time(15,34), dep_want=time(15,34)),
+            'XBG': TimetableEntry(train_id=t1, loc='XBG', sorttime=time(15,35), arr_want=time(15,35), dep_want=time(15,36)),
+            'XDE': TimetableEntry(train_id=t1, loc='XDE', sorttime=time(15,39), arr_want=time(15,39), dep_want=None       ),
+        }
+        db.session.add_all(self.t1_timetable.values())
+        db.session.flush()
+
+        app.config['MINIMUM_TRAVEL_TIME_RATIO'] = 0.9
+
+    def tearDown(self):
+        self._teardown_database()
+
+    def test_singletrain(self):
+        """Test prediction of just one train without other ones interfering"""
+        Manager.from_trains([self.t1], time(15,29)).run()
+        self.assertMultiLineEqual(format_timetable(self.t1), """\
+loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
+XWF    None     15:30:00  None     None      None     15:30:00
+XLG    15:34:00 15:34:00  None     None      15:34:00 15:34:00
+XBG    15:35:00 15:36:00  None     None      15:35:00 15:36:00
+XDE    15:39:00 None      None     None      15:39:00 None    
+""")
+        Manager.from_trains([self.t1], time(15,31)).run()
+        self.assertMultiLineEqual(format_timetable(self.t1), """\
+loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
+XWF    None     15:30:00  None     None      None     15:31:00
+XLG    15:34:00 15:34:00  None     None      15:34:36 15:34:36
+XBG    15:35:00 15:36:00  None     None      15:35:30 15:36:15
+XDE    15:39:00 None      None     None      15:38:57 None    
+""")        #TODO there is a litte bug, this ^ should be 15:39:00
+
+        self.t1_timetable['XWF'].dep_real = time(15,32)
+        Manager.from_trains([self.t1], time(15,34)).run()
+        self.assertMultiLineEqual(format_timetable(self.t1), """\
+loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
+XWF    None     15:30:00  None     15:32:00  None     None    
+XLG    15:34:00 15:34:00  None     None      15:35:36 15:35:36
+XBG    15:35:00 15:36:00  None     None      15:36:30 15:37:15
+XDE    15:39:00 None      None     None      15:39:57 None    
+""")
+        Manager.from_trains([self.t1], time(15,37)).run()
+        self.assertMultiLineEqual(format_timetable(self.t1), """\
+loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
+XWF    None     15:30:00  None     15:32:00  None     None    
+XLG    15:34:00 15:34:00  None     None      15:37:00 15:37:00
+XBG    15:35:00 15:36:00  None     None      15:37:54 15:38:39
+XDE    15:39:00 None      None     None      15:41:21 None    
+""")
+
+        self.t1_timetable['XLG'].arr_real = time(15,35)
+        Manager.from_trains([self.t1], time(15,35,30)).run()
+        self.assertMultiLineEqual(format_timetable(self.t1), """\
+loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
+XWF    None     15:30:00  None     15:32:00  None     None    
+XLG    15:34:00 15:34:00  15:35:00 None      None     15:35:30
+XBG    15:35:00 15:36:00  None     None      15:36:24 15:37:09
+XDE    15:39:00 None      None     None      15:39:51 None    
+""")
+
+        self.t1_timetable['XLG'].dep_real = time(15,35)
+        self.t1_timetable['XBG'].arr_real = time(15,36,30)
+        manager = Manager.from_trains([self.t1], time(15,37))
+        manager.run()
+        self.assertMultiLineEqual(format_timetable(self.t1), """\
+loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
+XWF    None     15:30:00  None     15:32:00  None     None    
+XLG    15:34:00 15:34:00  15:35:00 15:35:00  None     None    
+XBG    15:35:00 15:36:00  15:36:30 None      None     15:37:15
+XDE    15:39:00 None      None     None      15:39:57 None    
+""")
+
+    #TODO test earliest_arrival and earliest_departure
+
+
+def format_timetable(train):
+    out = []
+    out.append('loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred')
+    for e in train.timetable_entries:
+        out.append('%-5s  %-8s %-8s  %-8s %-8s  %-8s %-8s' %
+                (e.loc, e.arr_want, e.dep_want, e.arr_real, e.dep_real, e.arr_pred, e.dep_pred))
+
+    out.append('')
+    return '\n'.join(out)
 
 if __name__ == '__main__':
     unittest.main()

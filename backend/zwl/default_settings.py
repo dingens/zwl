@@ -25,3 +25,15 @@ TRAIN_COLOR_MAP_DARK = {'nv':'#f44', 'fv':'#48f', 'gv':'#2f6',
 # This setting can be used to test the frontend's ability to cope with slow
 # response times.
 RESPONSE_DELAY = 0
+
+
+# PREDICTION MODULE RELATED SETTINGS
+
+# Limit for the train time prediction (seconds from current time)
+PREDICTION_INTERVAL = 7200 # 2h
+
+# If is no minimal travel time given in the timetable, we approximate
+# this assuming a constant factor.
+# For example, with a ratio of 0.8 and a travel time of five minutes in the
+# timetable, it is assumed a train can do this in four minutes.
+MINIMUM_TRAVEL_TIME_RATIO = 0.9
