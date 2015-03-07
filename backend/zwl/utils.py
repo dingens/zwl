@@ -1,5 +1,6 @@
 # -*- coding: utf8 -*-
 import socket
+import warnings
 from contextlib import contextmanager
 from datetime import datetime, date, timedelta
 from zwl import app
@@ -45,10 +46,37 @@ def timediff(a, b):
 
     diff = aa - bb
     if diff > _LIMIT:
-        raise ValueError("more than 8 hours apart: %r %r" % (a, b))
+        raise ValueError('more than 8 hours apart: %r %r' % (a, b))
 
     return diff
 
+def timeadd(t, delta):
+    """
+    `time + delta` for `datetime.time` objects.
+
+    Arguments which cause the result being on another day are supported,
+    however a `MidnightWarning` is issued in such a case.
+
+    To ensure consistency, this should only be used with small delta values,
+    thus, it is required that delta be less than 8 hours.
+    """
+    _LIMIT = timedelta(hours=8)
+    _date = date(1,1,1)
+
+    if abs(delta) > _LIMIT:
+        raise ValueError('more than 8 hours: %r' % delta)
+
+    dt = datetime.combine(_date, t)
+    result = dt + delta
+
+    if result.date() != _date:
+        warnings.warn('result is on the next day: %r + %r' % (t, delta),
+                MidnightWarning)
+
+    return result.time()
+
+class MidnightWarning(UserWarning):
+    pass
 
 class ClockConnection(object):
     """

@@ -4,11 +4,12 @@ import itertools
 import os
 import tempfile
 import unittest
+import warnings
 from datetime import timedelta, time
 from zwl import app, db, trains
 from zwl.database import *
 from zwl.lines import get_line
-from zwl.utils import timediff
+from zwl.utils import MidnightWarning, timeadd, timediff
 
 class ZWLTestCase(unittest.TestCase):
     def _setup_database(self):
@@ -145,6 +146,18 @@ class TestUtils(ZWLTestCase):
         # not implemented yet
         #self.assertEqual(timediff(time(1,15), time(22,45)),
         #                 timedelta(minutes=150))
+
+    def test_timeadd(self):
+        self.assertEqual(timeadd(time(10,20), timedelta(minutes=80)),
+                         time(11,40))
+        with warnings.catch_warnings(record=True) as w:
+            self.assertEqual(timeadd(time(22,20), timedelta(minutes=120)),
+                             time(0,20))
+            assert len(w) == 1
+            assert issubclass(w[-1].category, MidnightWarning)
+
+        with self.assertRaises(ValueError):
+            timeadd(time(10,20), timedelta(hours=9))
 
 
 if __name__ == '__main__':
