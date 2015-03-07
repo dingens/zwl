@@ -137,6 +137,7 @@ class Journey(object):
         """
         if cur.arr_want is None:
             # this is the train's first stop
+            assert cur.arr_real is None
             return max(self.now, cur.dep_want)
 
         #TODO: if too early, only wait in stations

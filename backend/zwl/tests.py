@@ -172,13 +172,15 @@ class TestPredict(ZWLTestCase):
         db.session.add_all([ice, mst, self.t1])
         db.session.flush()
 
-        t1 = self.t1.id
-        self.t1_timetable = {
-            'XWF': TimetableEntry(train_id=t1, loc='XWF', sorttime=time(15,30), arr_want=None,        dep_want=time(15,30)),
-            'XLG': TimetableEntry(train_id=t1, loc='XLG', sorttime=time(15,34), arr_want=time(15,34), dep_want=time(15,34)),
-            'XBG': TimetableEntry(train_id=t1, loc='XBG', sorttime=time(15,35), arr_want=time(15,35), dep_want=time(15,36)),
-            'XDE': TimetableEntry(train_id=t1, loc='XDE', sorttime=time(15,39), arr_want=time(15,39), dep_want=None       ),
-        }
+        def tte(loc, track, arr, dep):
+            return (loc, TimetableEntry(train_id=self.t1.id, loc=loc,
+                sorttime=arr or dep, arr_want=arr, dep_want=dep, track_want=track))
+        self.t1_timetable = dict((
+            tte('XWF', 1, None,        time(15,30)),
+            tte('XLG', 1, time(15,34), time(15,34)),
+            tte('XBG', 1, time(15,35), time(15,36)),
+            tte('XDE', 1, time(15,39), None       ),
+        ))
         db.session.add_all(self.t1_timetable.values())
         db.session.flush()
 
@@ -191,70 +193,73 @@ class TestPredict(ZWLTestCase):
         """Test prediction of just one train without other ones interfering"""
         Manager.from_trains([self.t1], time(15,29)).run()
         self.assertMultiLineEqual(format_timetable(self.t1), """\
-loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
-XWF    None     15:30:00  None     None      None     15:30:00
-XLG    15:34:00 15:34:00  None     None      15:34:00 15:34:00
-XBG    15:35:00 15:36:00  None     None      15:35:00 15:36:00
-XDE    15:39:00 None      None     None      15:39:00 None    
+loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
+XWF    None     15:30:00 1     None     None     None  None     15:30:00
+XLG    15:34:00 15:34:00 1     None     None     None  15:34:00 15:34:00
+XBG    15:35:00 15:36:00 1     None     None     None  15:35:00 15:36:00
+XDE    15:39:00 None     1     None     None     None  15:39:00 None    
 """)
         Manager.from_trains([self.t1], time(15,31)).run()
         self.assertMultiLineEqual(format_timetable(self.t1), """\
-loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
-XWF    None     15:30:00  None     None      None     15:31:00
-XLG    15:34:00 15:34:00  None     None      15:34:36 15:34:36
-XBG    15:35:00 15:36:00  None     None      15:35:30 15:36:15
-XDE    15:39:00 None      None     None      15:38:57 None    
+loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
+XWF    None     15:30:00 1     None     None     None  None     15:31:00
+XLG    15:34:00 15:34:00 1     None     None     None  15:34:36 15:34:36
+XBG    15:35:00 15:36:00 1     None     None     None  15:35:30 15:36:15
+XDE    15:39:00 None     1     None     None     None  15:38:57 None    
 """)        #TODO there is a litte bug, this ^ should be 15:39:00
 
         self.t1_timetable['XWF'].dep_real = time(15,32)
+        self.t1_timetable['XWF'].track_real = 1
         Manager.from_trains([self.t1], time(15,34)).run()
         self.assertMultiLineEqual(format_timetable(self.t1), """\
-loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
-XWF    None     15:30:00  None     15:32:00  None     None    
-XLG    15:34:00 15:34:00  None     None      15:35:36 15:35:36
-XBG    15:35:00 15:36:00  None     None      15:36:30 15:37:15
-XDE    15:39:00 None      None     None      15:39:57 None    
+loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
+XWF    None     15:30:00 1     None     15:32:00 1     None     None    
+XLG    15:34:00 15:34:00 1     None     None     None  15:35:36 15:35:36
+XBG    15:35:00 15:36:00 1     None     None     None  15:36:30 15:37:15
+XDE    15:39:00 None     1     None     None     None  15:39:57 None    
 """)
         Manager.from_trains([self.t1], time(15,37)).run()
         self.assertMultiLineEqual(format_timetable(self.t1), """\
-loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
-XWF    None     15:30:00  None     15:32:00  None     None    
-XLG    15:34:00 15:34:00  None     None      15:37:00 15:37:00
-XBG    15:35:00 15:36:00  None     None      15:37:54 15:38:39
-XDE    15:39:00 None      None     None      15:41:21 None    
+loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
+XWF    None     15:30:00 1     None     15:32:00 1     None     None    
+XLG    15:34:00 15:34:00 1     None     None     None  15:37:00 15:37:00
+XBG    15:35:00 15:36:00 1     None     None     None  15:37:54 15:38:39
+XDE    15:39:00 None     1     None     None     None  15:41:21 None    
 """)
 
         self.t1_timetable['XLG'].arr_real = time(15,35)
+        self.t1_timetable['XLG'].track_real = 1
         Manager.from_trains([self.t1], time(15,35,30)).run()
         self.assertMultiLineEqual(format_timetable(self.t1), """\
-loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
-XWF    None     15:30:00  None     15:32:00  None     None    
-XLG    15:34:00 15:34:00  15:35:00 None      None     15:35:30
-XBG    15:35:00 15:36:00  None     None      15:36:24 15:37:09
-XDE    15:39:00 None      None     None      15:39:51 None    
+loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
+XWF    None     15:30:00 1     None     15:32:00 1     None     None    
+XLG    15:34:00 15:34:00 1     15:35:00 None     1     None     15:35:30
+XBG    15:35:00 15:36:00 1     None     None     None  15:36:24 15:37:09
+XDE    15:39:00 None     1     None     None     None  15:39:51 None    
 """)
 
         self.t1_timetable['XLG'].dep_real = time(15,35)
         self.t1_timetable['XBG'].arr_real = time(15,36,30)
+        self.t1_timetable['XBG'].track_real = 1
         manager = Manager.from_trains([self.t1], time(15,37))
         manager.run()
         self.assertMultiLineEqual(format_timetable(self.t1), """\
-loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred
-XWF    None     15:30:00  None     15:32:00  None     None    
-XLG    15:34:00 15:34:00  15:35:00 15:35:00  None     None    
-XBG    15:35:00 15:36:00  15:36:30 None      None     15:37:15
-XDE    15:39:00 None      None     None      15:39:57 None    
+loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
+XWF    None     15:30:00 1     None     15:32:00 1     None     None    
+XLG    15:34:00 15:34:00 1     15:35:00 15:35:00 1     None     None    
+XBG    15:35:00 15:36:00 1     15:36:30 None     1     None     15:37:15
+XDE    15:39:00 None     1     None     None     None  15:39:57 None    
 """)
 
     #TODO test earliest_arrival and earliest_departure
 
 
 def format_timetable(train):
-    out = []
-    out.append('loc    arr_want dep_want  arr_real dep_real  arr_pred dep_pred')
+    out = ['loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred']
     for e in train.timetable_entries:
-        out.append('%-5s  %-8s %-8s  %-8s %-8s  %-8s %-8s' %
-                (e.loc, e.arr_want, e.dep_want, e.arr_real, e.dep_real, e.arr_pred, e.dep_pred))
+        out.append('%-5s  %-8s %-8s %-4s  %-8s %-8s %-4s  %-8s %-8s' %
+                (e.loc, e.arr_want, e.dep_want, e.track_want,
+                 e.arr_real, e.dep_real, e.track_real, e.arr_pred, e.dep_pred))
 
     out.append('')
     return '\n'.join(out)
