@@ -21,8 +21,9 @@ class ZWLTestCase(unittest.TestCase):
         db.metadata.create_all(bind=db.engine)
 
     def _teardown_database(self):
+        db.session.rollback()
         os.close(self.db_fd)
-        #TODO: unlinking breaks everything?!
+        #TODO: unlinking (in connection with s/flush/commit/) breaks everything?!
         #os.unlink(self.db)
 
 class TestTrains(ZWLTestCase):
@@ -61,7 +62,7 @@ class TestTrains(ZWLTestCase):
         assert self.t2.id not in ids
 
         ids = trains.get_train_ids_within_timeframe(time(15,00), time(15,36), get_line('sample'), startpos=0, endpos=.2)
-        assert ids == []
+        self.assertEqual(ids, [])
 
     def test_get_train_information(self):
         res = list(trains.get_train_information([self.t1], get_line('sample')))
@@ -241,8 +242,7 @@ XDE    15:39:00 None     1     None     None     None  15:39:51 None
         self.t1_timetable['XLG'].dep_real = time(15,35)
         self.t1_timetable['XBG'].arr_real = time(15,36,30)
         self.t1_timetable['XBG'].track_real = 1
-        manager = Manager.from_trains([self.t1], time(15,37))
-        manager.run()
+        Manager.from_trains([self.t1], time(15,37)).run()
         self.assertMultiLineEqual(format_timetable(self.t1), """\
 loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
 XWF    None     15:30:00 1     None     15:32:00 1     None     None    
@@ -252,8 +252,7 @@ XDE    15:39:00 None     1     None     None     None  15:39:57 None
 """)
 
         self.t1_timetable['XBG'].dep_real = time(15,38)
-        manager = Manager.from_trains([self.t1], time(15,39))
-        manager.run()
+        Manager.from_trains([self.t1], time(15,39)).run()
         self.assertMultiLineEqual(format_timetable(self.t1), """\
 loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
 XWF    None     15:30:00 1     None     15:32:00 1     None     None    
@@ -264,8 +263,7 @@ XDE    15:39:00 None     1     None     None     None  15:40:42 None
 
         self.t1_timetable['XDE'].arr_real = time(15,41)
         self.t1_timetable['XDE'].track_real = 1
-        manager = Manager.from_trains([self.t1], time(15,39))
-        manager.run()
+        Manager.from_trains([self.t1], time(15,39)).run()
         self.assertMultiLineEqual(format_timetable(self.t1), """\
 loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
 XWF    None     15:30:00 1     None     15:32:00 1     None     None    
