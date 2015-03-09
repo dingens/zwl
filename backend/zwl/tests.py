@@ -251,6 +251,29 @@ XBG    15:35:00 15:36:00 1     15:36:30 None     1     None     15:37:15
 XDE    15:39:00 None     1     None     None     None  15:39:57 None    
 """)
 
+        self.t1_timetable['XBG'].dep_real = time(15,38)
+        manager = Manager.from_trains([self.t1], time(15,39))
+        manager.run()
+        self.assertMultiLineEqual(format_timetable(self.t1), """\
+loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
+XWF    None     15:30:00 1     None     15:32:00 1     None     None    
+XLG    15:34:00 15:34:00 1     15:35:00 15:35:00 1     None     None    
+XBG    15:35:00 15:36:00 1     15:36:30 15:38:00 1     None     None    
+XDE    15:39:00 None     1     None     None     None  15:40:42 None    
+""")
+
+        self.t1_timetable['XDE'].arr_real = time(15,41)
+        self.t1_timetable['XDE'].track_real = 1
+        manager = Manager.from_trains([self.t1], time(15,39))
+        manager.run()
+        self.assertMultiLineEqual(format_timetable(self.t1), """\
+loc    arr_want dep_want tr_w  arr_real dep_real tr_r  arr_pred dep_pred
+XWF    None     15:30:00 1     None     15:32:00 1     None     None    
+XLG    15:34:00 15:34:00 1     15:35:00 15:35:00 1     None     None    
+XBG    15:35:00 15:36:00 1     15:36:30 15:38:00 1     None     None    
+XDE    15:39:00 None     1     15:41:00 None     1     None     None    
+""")
+
     #TODO test earliest_arrival and earliest_departure
 
 
