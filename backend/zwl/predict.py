@@ -3,7 +3,7 @@ from collections import namedtuple
 from datetime import timedelta
 from zwl import app, db
 from zwl.database import Train, TimetableEntry, MinimumStopTime
-from zwl.utils import timediff, timeadd
+from zwl.utils import timediff, timeadd, writable_namedtuple
 
 class Journey(object):
     def __init__(self, train, now, timetable=None):
@@ -324,18 +324,4 @@ class NotFree(Response):
 
 Location = namedtuple('Location', ['code', 'track'])
 
-# no namedtuple as we have to be able to modify next_action
-class QueueEntry(object):
-    __slots__ = ('journey', 'runner', 'next_action')
-    def __init__(self, journey, runner, next_action):
-        self.journey = journey
-        self.runner = runner
-        self.next_action = next_action
-
-    def __iter__(self):
-        # support `a,b,c =` style assignment
-        for name in self.__slots__:
-            yield getattr(self, name)
-
-    def __repr__(self):
-        return 'QueueEntry(%r, %r, %r)' % tuple(self)
+QueueEntry = writable_namedtuple('QueueEntry', ('journey', 'runner', 'next_action'))

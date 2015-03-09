@@ -78,6 +78,27 @@ def timeadd(t, delta):
 class MidnightWarning(UserWarning):
     pass
 
+def writable_namedtuple(name, slots):
+    class WritableNamedtuple(object):
+        __slots__ = slots
+        def __init__(self, *args):
+            if len(args) != len(self.__slots__):
+                raise TypeError('expected %d arguments, got %d' %
+                        (len(args), len(self.__slots__)))
+            for i, s in enumerate(self.__slots__):
+                setattr(self, s, args[i])
+
+        def __iter__(self):
+            # support `a,b,c =` style assignment
+            for name in self.__slots__:
+                yield getattr(self, name)
+
+        def __repr__(self):
+            return '%s%r' % (self.__class__.__name__, tuple(self))
+
+    WritableNamedtuple.__name__ = name
+    return WritableNamedtuple
+
 class ClockConnection(object):
     """
     Connection to the clock server.
