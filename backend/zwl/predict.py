@@ -24,8 +24,8 @@ class Journey(object):
         self.position = self._find_current_position()
 
     def run(self):
+        action = None
         while True:
-            ### section one: handle arrival
             try:
                 current = self.timetable[self.position]
             except IndexError:
@@ -33,8 +33,8 @@ class Journey(object):
                 #TODO: handle transition to next train
                 break
 
-            #TODO special case first location
-
+            ### section one: handle arrival
+            last_action = action
             if self.position > 0:
                 if current.arr_real is not None:
                     # has already happened, but still we need to mark current
@@ -47,15 +47,19 @@ class Journey(object):
 
                     action = Arrive(current.arr_pred,
                                     Location(current.loc, current.track_want))
+
+                if last_action is not None:
+                    last_action.set_expected_release_time(action.time)
                 result = (yield action)
-                if result is not True:
-                    raise ValueError('expected response of True, got %r' % result)
+                if not isinstance(result, Admitted):
+                    raise ValueError('expected admission, got %r' % result)
 
                 if current.dep_want is None:
                     # train ends here, we're done
                     break
 
             ### section two: handle ride to next location
+            last_action = action
             try:
                 next = self.timetable[self.position+1]
             except IndexError:
@@ -71,29 +75,42 @@ class Journey(object):
 
 
             if current.dep_real:
+                # has already happened, but still we need to mark current
+                # track as occupied
+                if last_action is not None:
+                    last_action.set_expected_release_time(current.dep_real)
                 action = Ride(current.dep_real,
                               Location(current.loc, current.track_want),
                               Location(next.loc, next.track_want),
                               succ)
-                admission_time = (yield action)
-                if admission_time != current.dep_real:
-                    raise RuntimeError('Not admitted for a ride that has'
-                            'already started (dep_real=%s, admitted at=%s)' % \
-                            (current.dep_real, admission_time))
+                result = (yield action)
+                if not isinstance(result, Admitted):
+                    raise RuntimeError('Not admitted for a ride that has '
+                            'already started, got: %r' % result)
             else:
                 current.dep_pred = self._earliest_departure(current)
 
-                #TODO current.track_real?
-                action = Ride(current.dep_pred,
-                              Location(current.loc, current.track_want),
-                              Location(next.loc, next.track_want),
-                              succ)
+                while True:
+                    if last_action is not None:
+                        last_action.set_expected_release_time(current.dep_pred)
 
-                admission_time = (yield action)
-                if current.dep_pred != admission_time:
-                    print 'wanted %s -> %s at %s, admitted at %s' % (
-                            current.loc, next.loc, current.dep_pred, admission_time)
-                    current.dep_pred = admission_time
+                    #TODO do we need to consider current.track_real?
+                    action = Ride(current.dep_pred,
+                                  Location(current.loc, current.track_want),
+                                  Location(next.loc, next.track_want),
+                                  succ)
+
+                    result = (yield action)
+                    if isinstance(result, NotFree):
+                        print '%r: wanted %s -> %s at %s, blocked until %s' % (
+                                self, current.loc, next.loc,
+                                current.dep_pred, result.expected_release_time)
+                        current.dep_pred = result.expected_release_time
+                    elif isinstance(result, Admitted):
+                        break
+                    else:
+                        raise RuntimeError('expected subclass of Response, '
+                                           'got %s' % result)
 
             self.position += 1
 
@@ -174,7 +191,7 @@ class Manager(object):
             queue.append(QueueEntry(j, runner, next_action))
 
         while queue:
-            # find the journey with the the earliest action
+            # find the journey with the earliest action
             queue.sort(key=lambda qe: qe.next_action.time)
             entry = queue[0]
             journey, runner, action = entry
@@ -182,17 +199,18 @@ class Manager(object):
             #TODO mark tracks as occupied
             if isinstance(action, Ride):
                 #TODO calculate when to really admit the ride
-                response = action.time
+                response = Admitted()
             elif isinstance(action, Arrive):
-                response = True
+                response = Admitted()
             else:
                 raise RuntimeError('Unexpected action type: %r' % type(action))
 
             try:
                 entry.next_action = runner.send(response)
-                assert isinstance(entry.next_action, Action)
             except StopIteration:
+                #TODO free occupations
                 queue.pop(0)
+                break
 
 
     @classmethod
@@ -237,6 +255,11 @@ class Action(object):
     def __init__(self, time):
         assert time is not None
         self.time = time
+        self.occupied_elements = [] #TODO
+
+    def set_expected_release_time(self, rtime):
+        for e in self.occupied_elements:
+            e.expected_release_time = rtime
 
 
 class Arrive(Action):
@@ -276,6 +299,28 @@ class Ride(Action):
         return '<Ride %s from %s[%s] to %s[%s]>' % (self.time.strftime('%T'),
             self.start.code, self.start.track, self.end.code, self.end.track)
 
+class Response(object):
+    """
+    Baseclass for responses the Manager sends to the trains (represented by
+    a Journey object) after they sent an `Action` they wish to execute.
+    """
+    pass
+
+class Admitted(Response):
+    """
+    Response meaning: The desired action is admitted as requested.
+    """
+    pass
+
+class NotFree(Response):
+    """
+    Response meaning: The desired action is not possible at the desired time
+    due to lack of free tracks. They are expected to be free at
+    `expected_release_time`.
+    """
+    def __init__(self, expected_release_time):
+        self.expected_release_time = expected_release_time
+        super(NotFree, self).__init__()
 
 Location = namedtuple('Location', ['code', 'track'])
 
