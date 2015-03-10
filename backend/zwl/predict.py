@@ -1,6 +1,7 @@
 # -*- coding: utf8 -*-
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from datetime import timedelta
+from math import ceil
 from zwl import app, db
 from zwl.database import Train, TimetableEntry, MinimumStopTime
 from zwl.utils import timediff, timeadd, writable_namedtuple
@@ -37,15 +38,15 @@ class Journey(object):
             last_action = action
             if self.position > 0:
                 if current.arr_real is not None:
-                    # has already happened, but still we need to mark current
-                    # track as occupied
-                    action = Arrive(current.arr_real,
+                    # has already happened, but still we need to report it
+                    # for track occupation
+                    action = Arrive(self, current.arr_real,
                                 Location(current.loc, current.track_real))
                 else:
                     last = self.timetable[self.position-1]
                     current.arr_pred = self._earliest_arrival(last, current)
 
-                    action = Arrive(current.arr_pred,
+                    action = Arrive(self, current.arr_pred,
                                     Location(current.loc, current.track_want))
 
                 if last_action is not None:
@@ -66,6 +67,7 @@ class Journey(object):
                 if self.position == 0:
                     raise ValueError('Timetable of %r has less than two stops'
                                      % self.train)
+                break
 
             try:
                 succ = self.timetable[self.position+2]
@@ -73,13 +75,12 @@ class Journey(object):
             except IndexError:
                 succ = None
 
-
             if current.dep_real:
                 # has already happened, but still we need to mark current
                 # track as occupied
                 if last_action is not None:
                     last_action.set_expected_release_time(current.dep_real)
-                action = Ride(current.dep_real,
+                action = Ride(self, current.dep_real,
                               Location(current.loc, current.track_want),
                               Location(next.loc, next.track_want),
                               succ)
@@ -95,16 +96,13 @@ class Journey(object):
                         last_action.set_expected_release_time(current.dep_pred)
 
                     #TODO do we need to consider current.track_real?
-                    action = Ride(current.dep_pred,
+                    action = Ride(self, current.dep_pred,
                                   Location(current.loc, current.track_want),
                                   Location(next.loc, next.track_want),
                                   succ)
 
                     result = (yield action)
                     if isinstance(result, NotFree):
-                        print '%r: wanted %s -> %s at %s, blocked until %s' % (
-                                self, current.loc, next.loc,
-                                current.dep_pred, result.expected_release_time)
                         current.dep_pred = result.expected_release_time
                     elif isinstance(result, Admitted):
                         break
@@ -141,7 +139,7 @@ class Journey(object):
             else:
                 ridetime = timediff(current.arr_want, last.dep_want).total_seconds()
                 ratio = app.config['MINIMUM_TRAVEL_TIME_RATIO']
-                min_ridetime = timedelta(seconds=ridetime*ratio)
+                min_ridetime = timedelta(seconds=ceil(ridetime*ratio))
 
         return max(self.now, timeadd(last_dep, min_ridetime))
 
@@ -172,14 +170,14 @@ class Journey(object):
         return max(self.now, cur.dep_want, timeadd(arr, min_stoptime))
 
     def __repr__(self):
-        return '<Journey of %r now=%s>' % \
-            (self.train, self.now.strftime('%T'))
+        return '<Journey of %r>' % self.train
 
 
 class Manager(object):
     def __init__(self, journeys, now):
         self.journeys = journeys
         self.now = now
+        self.elements = defaultdict(lambda: None)
 
     def run(self):
         queue = []
@@ -196,21 +194,13 @@ class Manager(object):
             entry = queue[0]
             journey, runner, action = entry
 
-            #TODO mark tracks as occupied
-            if isinstance(action, Ride):
-                #TODO calculate when to really admit the ride
-                response = Admitted()
-            elif isinstance(action, Arrive):
-                response = Admitted()
-            else:
-                raise RuntimeError('Unexpected action type: %r' % type(action))
+            response = action.allocate(self)
 
             try:
                 entry.next_action = runner.send(response)
             except StopIteration:
                 #TODO free occupations
                 queue.pop(0)
-                break
 
 
     @classmethod
@@ -252,14 +242,50 @@ class Action(object):
                  For conditional actions, this is the time when the Journey
                  wishes to carry out the action.
     """
-    def __init__(self, time):
+    def __init__(self, journey, time):
+        self.journey = journey
         assert time is not None
         self.time = time
-        self.occupied_elements = [] #TODO
+
+        self.manager = None
+        self.required_elements = self.find_required_elements()
 
     def set_expected_release_time(self, rtime):
-        for e in self.occupied_elements:
-            e.expected_release_time = rtime
+        for e in self.required_elements:
+            self.manager.elements[e].expected_release_time = rtime
+
+    def allocate(self, manager):
+        assert self.manager is None, 'must be called only once'
+
+        self.manager = manager
+        expected_release_times = []
+
+        # check if we could execute the action
+        for elem_name in self.required_elements:
+            elem = manager.elements[elem_name]
+            if elem is None or elem.journey is self.journey:
+                continue
+            expected_release_times.append(elem.expected_release_time)
+
+        # we cannot, there are occupied elements
+        if expected_release_times:
+            expected_release_time = timeadd(max(expected_release_times),
+                    timedelta(seconds=1))
+            assert expected_release_time > self.time
+            return NotFree(expected_release_time)
+
+        # mark required elements
+        for elem_name in self.required_elements:
+            manager.elements[elem_name] = Occupancy(self.journey, None)
+
+        for elem_name in manager.elements:
+            if manager.elements[elem_name] is None:
+                continue
+            if manager.elements[elem_name].journey is self.journey:
+                if elem_name not in self.required_elements:
+                    manager.elements[elem_name] = None
+
+        return Admitted()
 
 
 class Arrive(Action):
@@ -269,13 +295,16 @@ class Arrive(Action):
     When used, the location is marked as occupied by the train. If the train
     had carried out a `Ride` action before, those track elements are freed.
     """
-    def __init__(self, time, loc):
+    def __init__(self, journey, time, loc):
         self.loc = loc
-        super(Arrive, self).__init__(time)
+        super(Arrive, self).__init__(journey, time)
+
+    def find_required_elements(self):
+        return [(self.loc.code, self.loc.track)]
 
     def __repr__(self):
-        return '<Arrive %s at %s[%s]>' % \
-            (self.time.strftime('%T'), self.loc.code, self.loc.track)
+        return '<Arrive %r %s at %s[%s]>' % (self.journey,
+                self.time.strftime('%T'), self.loc.code, self.loc.track)
 
 
 class Ride(Action):
@@ -289,15 +318,23 @@ class Ride(Action):
     :param end: end location and track
     :param succ: location after end, if available. Needed for correct routing.
     """
-    def __init__(self, time, start, end, succ=None):
+    def __init__(self, journey, time, start, end, succ=None):
         self.start = start
         self.end = end
         self.succ = succ
-        super(Ride, self).__init__(time)
+        super(Ride, self).__init__(journey, time)
+
+    def find_required_elements(self):
+        return [
+            (self.start.code, self.start.track),
+            ('line', self.start.code, self.end.code),
+            (self.end.code, self.end.track),
+        ]
 
     def __repr__(self):
-        return '<Ride %s from %s[%s] to %s[%s]>' % (self.time.strftime('%T'),
-            self.start.code, self.start.track, self.end.code, self.end.track)
+        return '<Ride %r %s from %s[%s] to %s[%s]>' % (self.journey,
+                self.time.strftime('%T'), self.start.code, self.start.track,
+                self.end.code, self.end.track)
 
 class Response(object):
     """
@@ -323,5 +360,6 @@ class NotFree(Response):
         super(NotFree, self).__init__()
 
 Location = namedtuple('Location', ['code', 'track'])
+Occupancy = writable_namedtuple('Occupancy', ['journey', 'expected_release_time'])
 
 QueueEntry = writable_namedtuple('QueueEntry', ('journey', 'runner', 'next_action'))
