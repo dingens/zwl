@@ -78,7 +78,7 @@ ZWL.Display.prototype = {
     sizechange: function (width,height) {
         if ( width == undefined && height == undefined) {
             width = $(window).width() - 25;
-            height = 700;
+            height = $(window).height() - 25;
         }
         this.width = width;
         this.height = height;
