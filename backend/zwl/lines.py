@@ -186,7 +186,7 @@ add_line('sample', u'Beispielsträcke', [
     Station('XDE#2', 100, u'Derau'),
 ])
 
-add_line('ring-xde', u'Ring, XWF-XCE-XDE-XBG-XWF', [
+add_line('ring-xwf', u'Ring, XWF-XCE-XDE-XBG-XWF', [
     Signal('XWF_F#1', 0, 'right'),
     Signal('XWF_N#1', 0, 'left'),
     Station('XWF#1', 1, u'Walfdorf'),
