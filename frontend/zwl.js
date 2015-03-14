@@ -869,10 +869,13 @@ function coalesce() {
 
 function timeformat (time, format) {
     var d = new Date(time*1000);
-    if ( format == 'hm')
-        return d.getHours() + ':' + d.getMinutes();
-    else
+    if ( format == 'hm') {
+        var min = d.getMinutes();
+        if ( min < 10 ) min = '0' + min
+        return d.getHours() + ':' + min;
+    } else {
         console.error('invalid format given');
+    }
 }
 
 if (!Number.between) {
