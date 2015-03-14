@@ -186,21 +186,6 @@ ZWL.Graph = function (display, linename, viewcfg) {
     this.locaxis.labels = this.locaxis.g.group();
     this.locaxis.bottom = this.svg.use(this.locaxis.labels).addClass('locaxis');
 
-    //TODO: provisory. should be draggable.
-    var that = this;
-    this.locaxis.leftleftbutton = this.locaxis.g.group().addClass('button')
-        .add(this.svg.rect(20,20)).translate(-60,0)
-        .add(this.svg.path('M 16,4 L 4,10 L 16,16 Z'))
-        .click(function() { that.xstart +=.05; that.display.redraw(); });
-    this.locaxis.leftrightbutton = this.locaxis.g.group().addClass('button')
-        .add(this.svg.rect(20,20)).translate(-35,0)
-        .add(this.svg.path('M 4,4 L 16,10 L 4,16 Z'))
-        .click(function() { that.xstart -=.05; that.display.redraw(); });
-    this.locaxis.rightleftbutton = this.locaxis.g.use(this.locaxis.leftleftbutton)
-        .click(function() { that.xend +=.05; that.display.redraw(); });
-    this.locaxis.rightrightbutton = this.locaxis.g.use(this.locaxis.leftrightbutton)
-        .click(function() { that.xend -=.05; that.display.redraw(); });
-
     if (this.linegetterthrobber != undefined)
         this.linegetterthrobber.remove();
     this.linegetterthrobber = this.svg.plain('Lade Streckendaten …');
@@ -245,9 +230,6 @@ ZWL.Graph.prototype = {
         var bb = this.linegetterthrobber.bbox()
         this.linegetterthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
                                      this.boxy + (this.boxheight-bb.height) / 2);
-
-        this.locaxis.rightleftbutton.translate(this.boxwidth+75);
-        this.locaxis.rightrightbutton.translate(this.boxwidth+75);
 
         this.redraw();
     },
