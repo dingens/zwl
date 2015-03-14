@@ -27,7 +27,7 @@ text { fill: white; }
 .locaxis text { fill: white; text-anchor: middle; }
 .locaxis .button rect { fill: #111; stroke: white; stroke-width: 1px; }
 .locaxis .button path { fill: white; }
-
+.locmarkers line { fill: none; stroke-width: 0.5px; }
 
 .timeaxis .axis { cursor: -webkit-grab; cursor: grab; }
 .timeaxis .axis.grabbing { cursor: -webkit-grabbing; cursor: grabbing; }

@@ -37,7 +37,7 @@ ZWL.Display = function (element, viewconfig) {
 
     this.timezoom = .25; // can be overridden by viewconfig. pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
-    this.now = 13095720;
+    this.now = 13099069;
     this.starttime = this.now - 600;
     this.endtime = null;
 
@@ -158,6 +158,7 @@ ZWL.Graph = function (display, linename, viewcfg) {
     this.svg = this.display.svg.group().addClass('graph').addClass('graph_' + linename);
 
     this.trainboxframe = this.svg.rect(0,0).addClass('trainboxframe');
+    this.locmarkers = this.svg.group().addClass('locmarkers');
     this.traincliprect = this.svg.rect(0,0);
     this.trainclip = this.svg.clip().add(this.traincliprect);
     this.trainbox = this.svg.group().addClass('trainbox');
@@ -200,6 +201,7 @@ ZWL.Graph = function (display, linename, viewcfg) {
                 if ( loc.display_label ) {
                     this.locaxis[loc.id] = this.locaxis.labels.plain(loc.code)
                         .attr('title', loc.name);
+                    this.locmarkers[loc.id] = this.locmarkers.line(0,0,0,0).hide();
                 }
             }
         }).bind(this)
@@ -274,8 +276,17 @@ ZWL.Graph.prototype = {
 
         for ( var i in this.line.elements ) {
             var loc = this.line.elements[i];
-            if ( loc.display_label )
-                this.locaxis[loc.id].move(this.pos2x(loc.id), 0);
+            if ( loc.display_label ) {
+                if (this.loc2pos(loc.id).within(this.xstart, this.xend)) {
+                    var x = Math.round(this.pos2x(loc.id));
+                    this.locaxis[loc.id].move(x, 0).show();
+                    this.locmarkers[loc.id].plot(this.boxx+x, this.boxy,
+                            this.boxx+x, this.boxy+this.boxheight).show();
+                } else {
+                    this.locaxis[loc.id].hide();
+                    this.locmarkers[loc.id].hide();
+                }
+            }
         }
 
         this.fetch_trains();
