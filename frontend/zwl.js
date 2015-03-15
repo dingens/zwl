@@ -106,6 +106,19 @@ ZWL.Display.prototype = {
         });
         this.timeaxis.redraw();
     },
+    focustrain: function (trainnr) {
+        // quickfix for firefox, see issue #24
+        this.unfocustrains();
+
+        this.graphs.map(function(g) {
+            g.focustrain(trainnr);
+        });
+    },
+    unfocustrains: function () {
+        this.graphs.map(function(g) {
+            g.unfocustrains();
+        });
+    },
     time2y: function (time) {
         return this.timezoom * (time - this.epoch);
     },
@@ -167,10 +180,8 @@ ZWL.Graph = function (display, linename, viewcfg) {
 
     // quickfix for firefox, see issue #24
     this.trainboxframe.on('mouseenter', function() {
-        $('.trainlabelg.selected, .trainpathg.selected').each(function () {
-            // jquery doesn't really work inside svg
-            this.classList.remove('selected');
-        }); });
+        this.display.unfocustrains();
+    }.bind(this));
 
     this.nowmarker = this.trainbox.line(-1,-1,-1,-1).addClass('nowmarker')
         .clipWith(this.trainclip);
@@ -343,6 +354,16 @@ ZWL.Graph.prototype = {
                 }
             }).bind(this)
         );
+    },
+    focustrain: function (trainnr) {
+        if (trainnr in this.trains)
+            this.trains[trainnr].drawing.focus();
+    },
+    unfocustrains: function () {
+        $('.trainlabelg.selected, .trainpathg.selected').each(function () {
+            // jquery doesn't really work inside svg
+            this.classList.remove('selected');
+        });
     },
     pos2x: function (id) {
         // allow values like xstart and xend as input
@@ -544,12 +565,14 @@ ZWL.TrainDrawing.prototype = {
         }
     },
     mouseenter: function () {
-        this.pathsvg.addClass('selected').front();
-        this.labelsvg.addClass('selected').front();
+        this.graph.display.focustrain(this.train.info.nr);
     },
     mouseleave: function () {
-        this.pathsvg.removeClass('selected');
-        this.labelsvg.removeClass('selected');
+        this.graph.display.unfocustrains();
+    },
+    focus: function () {
+        this.pathsvg.addClass('selected').front();
+        this.labelsvg.addClass('selected').front();
     },
     redraw: function () {
         this.segments.map(function (segment) { segment.redraw(); });
