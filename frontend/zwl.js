@@ -37,7 +37,7 @@ ZWL.Display = function (element, viewconfig) {
 
     this.timezoom = .25; // can be overridden by viewconfig. pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
-    this.now = 13099069;
+    this.now = 13095034;
     this.starttime = this.now - 600;
     this.endtime = null;
 
@@ -294,8 +294,9 @@ ZWL.Graph.prototype = {
                     this.locmarkers[loc.id].plot(this.boxx+x, this.boxy,
                             this.boxx+x, this.boxy+this.boxheight).show();
                 } else {
-                    this.locaxis[loc.id].hide();
-                    this.locmarkers[loc.id].hide();
+                    // chrome ignores the hide() when <use>d...
+                    this.locaxis[loc.id].move(-100,-100).hide();
+                    this.locmarkers[loc.id].move(-100,-100).hide();
                 }
             }
         }
