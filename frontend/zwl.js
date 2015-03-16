@@ -525,15 +525,14 @@ ZWL.TrainDrawing = function (graph, trainnr) {
         .attr('title', this.train.info.name);
 
     // precreate label (used multiple times by the segments)
+    var gm = this.graph.measures;
     this.label = {};
     this.label.g = this.labelsvg.group().addClass('trainlabel');
     this.label.nr = this.label.g.plain(this.train.info.nr.toString())
-        .move(this.graph.measures.trainlabelxmargin,
-              this.graph.measures.trainlabelymargin);
+        .move(gm.trainlabelxmargin, gm.trainlabelymargin);
     var bb = this.label.nr.bbox();
-    this.label.box = this.label.g.rect(
-        bb.width+this.graph.measures.trainlabelxmargin*2,
-        bb.height+this.graph.measures.trainlabelymargin*2).move(0,0).back();
+    this.label.box = this.label.nr
+        .addframe(gm.trainlabelxmargin, gm.trainlabelymargin);
 
     if ( this.train.info.category != null ) {
         this.pathsvg.addClass('category_' + this.train.info.category);
@@ -956,3 +955,30 @@ function intersectvertseg(x, ya, yb, x1, y1, x2, y2) {
     // It is required that ya < yb.
     return intersecthorizseg(x, ya, yb, y1, x1, y2, x2);
 }
+
+SVG.extend(SVG.Text, {
+    addframe: function(xmargin, ymargin, usetransform) {
+        if ( typeof usetransform === 'undefined' ) usetransform = false;
+        this.frameoptions = {
+            xmargin: xmargin,
+            ymargin: ymargin,
+            usetransform: usetransform,
+            element: this.parent.rect(0,0).back(),
+        }
+        this.updateframe();
+        return this.frameoptions.element;
+    },
+    updateframe: function() {
+        if ( this.frameoptions.usetransform )
+            var bb = this.bbox();
+        else
+            var bb = this.node.getBBox();
+
+        this.frameoptions.element
+            .width(bb.width + this.frameoptions.xmargin*2)
+            .height(bb.height + this.frameoptions.ymargin*2)
+            .move(bb.x - this.frameoptions.xmargin,
+                  bb.y - this.frameoptions.ymargin);
+        return this;
+    },
+});
