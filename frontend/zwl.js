@@ -421,6 +421,11 @@ ZWL.TimeAxis = function ( display ) {
         .add(this.svg.path('M 3,10 L 17,10'))
         .click(function() { display.timezoom /= Math.SQRT2; display.redraw(); });
 
+    this.clock = {};
+    this.clock.g = this.axis.group().addClass('clock')
+    this.clock.text = this.clock.g.plain('00:00:00').move(0,0).center();
+    this.clock.text.addframe(5,5,true);
+
     var timeaxis = this; // `this` is overridden in dragging functions
     this.axis.dragstart = function (delta, event) {
         this.addClass('grabbing');
@@ -448,11 +453,17 @@ ZWL.TimeAxis.prototype = {
     },
     timechange: function () {
         this.axis.translate(0, -this.display.time2y(this.display.starttime));
+        this.clock.g.translate(this.width/2, this.display.time2y(this.display.now));
     },
     redraw: function () {
         this.timechange();
         this.svg.translate(this.x,this.y);
         this.mask.size(this.width,this.height).move(0,0);
+
+        this.clock.text
+            .plain(timeformat(this.display.now, 'hms'))
+            .center()
+            .updateframe();
 
         // we draw everything about one extra screen height to the top and
         // bottom (for scrolling)
@@ -489,6 +500,7 @@ ZWL.TimeAxis.prototype = {
                 delete this.times[time];
             }
 
+        this.clock.g.front();
         this.zoombuttons.plus.translate(this.width-50,this.height-25);
         this.zoombuttons.minus.translate(this.width-25,this.height-25);
         this.zoombuttons.bg.translate(this.width-55,this.height-30);
@@ -903,10 +915,15 @@ function coalesce() {
 
 function timeformat (time, format) {
     var d = new Date(time*1000);
+    var min = d.getMinutes();
+    var sec = d.getSeconds();
     if ( format == 'hm') {
-        var min = d.getMinutes();
         if ( min < 10 ) min = '0' + min
         return d.getHours() + ':' + min;
+    } else if ( format == 'hms' ) {
+        if ( min < 10 ) min = '0' + min
+        if ( sec < 10 ) sec = '0' + sec
+        return d.getHours() + ':' + min + ':' + sec;
     } else {
         console.error('invalid format given');
     }
@@ -957,6 +974,16 @@ function intersectvertseg(x, ya, yb, x1, y1, x2, y2) {
 }
 
 SVG.extend(SVG.Text, {
+    hcenter: function() {
+        return this.translate(-this.bbox().width / 2, 0);
+    },
+    vcenter: function() {
+        return this.translate(0, -this.bbox().height / 2);
+    },
+    center: function() {
+        var bb = this.bbox();
+        return this.translate(-bb.width/2, -bb.height/2);
+    },
     addframe: function(xmargin, ymargin, usetransform) {
         if ( typeof usetransform === 'undefined' ) usetransform = false;
         this.frameoptions = {
