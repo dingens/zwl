@@ -422,9 +422,9 @@ ZWL.TimeAxis = function ( display ) {
         .click(function() { display.timezoom /= Math.SQRT2; display.redraw(); });
 
     this.clock = {};
-    this.clock.g = this.axis.group().addClass('clock')
+    this.clock.g = this.svg.group().addClass('clock');
     this.clock.text = this.clock.g.plain('00:00:00').move(0,0).center();
-    this.clock.text.addframe(5,5,true);
+    this.clock.box = this.clock.text.addframe(5,5,true);
 
     var timeaxis = this; // `this` is overridden in dragging functions
     this.axis.dragstart = function (delta, event) {
@@ -453,7 +453,10 @@ ZWL.TimeAxis.prototype = {
     },
     timechange: function () {
         this.axis.translate(0, -this.display.time2y(this.display.starttime));
-        this.clock.g.translate(this.width/2, this.display.time2y(this.display.now));
+        var clockheight = this.clock.text.bbox().height/2;
+        var clockpos = (this.display.now - this.display.starttime) * this.display.timezoom;
+        clockpos = Math.min(this.height-clockheight, Math.max(clockheight, clockpos));
+        this.clock.g.translate(this.width/2, clockpos);
     },
     redraw: function () {
         this.timechange();
@@ -500,7 +503,6 @@ ZWL.TimeAxis.prototype = {
                 delete this.times[time];
             }
 
-        this.clock.g.front();
         this.zoombuttons.plus.translate(this.width-50,this.height-25);
         this.zoombuttons.minus.translate(this.width-25,this.height-25);
         this.zoombuttons.bg.translate(this.width-55,this.height-30);
