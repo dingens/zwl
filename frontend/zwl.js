@@ -73,7 +73,6 @@ ZWL.Display = function (element, viewconfig) {
             window.setTimeout(this.sizechange.bind(this), 250);
     }.bind(this));
 };
-
 ZWL.Display.prototype = {
     sizechange: function (width,height) {
         if ( width == undefined && height == undefined) {
@@ -228,7 +227,6 @@ ZWL.Graph.from_string = function (display, vc) {
         throw new ZWL.ViewConfigParseError('ungültiger Streckenname: ' + linename);
     return new ZWL.Graph(display, linename, cfg);
 };
-
 ZWL.Graph.prototype = {
     sizechange: function (x,y, width,height) {
         if (arguments.length < 4) console.error('not enough arguments');
@@ -306,7 +304,7 @@ ZWL.Graph.prototype = {
     reposition_train_labels: function () {
         for ( var tnr in this.trains ) {
             var train = this.trains[tnr];
-            train.drawing.reposition_labels();
+            train.drawing.redraw_labels();
         }
     },
     fetch_trains: function () {
@@ -443,7 +441,6 @@ ZWL.TimeAxis = function ( display ) {
 
     this.times = {}
 }
-
 ZWL.TimeAxis.prototype = {
     sizechange: function (x,y, width,height) {
         if (arguments.length < 4) console.error('not enough arguments');
@@ -535,7 +532,8 @@ ZWL.TrainDrawing = function (graph, trainnr) {
     this.pathsvg = this.graph.trainpaths.group()
         .addClass('trainpathg').addClass('train' + this.train.info.nr)
         .attr('title', this.train.info.name);
-    this._add_mousehandlers(this.pathsvg);
+    this.pathsvg.on('mouseenter', this.mouseenter.bind(this));
+    this.pathsvg.on('mouseleave', this.mouseleave.bind(this));
 
     this.labelsvg = this.graph.trainlabels.group()
         .addClass('trainlabelg').addClass('train'+ this.train.info.nr)
@@ -557,21 +555,14 @@ ZWL.TrainDrawing = function (graph, trainnr) {
     }
     this._create_segments();
 }
-
 ZWL.TrainDrawing.prototype = {
     _create_segments: function () {
         this.segments = this.train.info.segments.map(function (segment) {
             return new ZWL.TrainDrawingSegment(this, segment);
         }.bind(this));
     },
-    _add_mousehandlers: function () {
-        for ( var i in arguments ) {
-            arguments[i].on('mouseenter', this.mouseenter.bind(this));
-            arguments[i].on('mouseleave', this.mouseleave.bind(this));
-        }
-    },
-    reposition_labels: function () {
-        this.segments.map(function (segment) { segment.reposition_labels(); });
+    redraw_labels: function () {
+        this.segments.map(function (segment) { segment.redraw_labels(); });
     },
     update: function () {
         if ( this.train.info.segments.length != this.segments.length ) {
@@ -601,12 +592,13 @@ ZWL.TrainDrawing.prototype = {
     },
 }
 
-ZWL.TrainDrawingSegment = function (drawing, segment) {
-    this.drawing = drawing;
+ZWL.TrainDrawingSegment = function (drawing, timetablesegment) {
+    this.drawing = drawing; // TrainDrawing
     this.graph = drawing.graph;
     this.display = drawing.graph.display;
     this.train = this.drawing.train;
-    this.segment = segment;
+    this.timetable = timetablesegment.timetable;
+    this.direction = timetablesegment.direction;
     this.pathsvg = drawing.pathsvg;
     this.labelsvg = drawing.labelsvg;
 
@@ -618,21 +610,19 @@ ZWL.TrainDrawingSegment = function (drawing, segment) {
         .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastblur.mask);
 
-    this.entrylabel = this.labelsvg.use(this.drawing.label.g);
-    this.exitlabel = this.labelsvg.use(this.drawing.label.g);
-    this.drawing._add_mousehandlers(this.entrylabel, this.exitlabel);
+    this.entrylabel = new ZWL.TrainLabel(this, 'entry');
+    this.exitlabel = new ZWL.TrainLabel(this, 'exit');
 
     this.update();
 }
-
 ZWL.TrainDrawingSegment.prototype = {
     update: function () {
         this.elements = [];
 
         var lastline = {};
         var laststop;
-        for ( i in this.segment.timetable ) {
-            var tte = this.segment.timetable[i]
+        for ( i in this.timetable ) {
+            var tte = this.timetable[i]
             if ( tte.line ) {
                 lastline = tte;
             } else if ( tte.loc ) {
@@ -703,21 +693,38 @@ ZWL.TrainDrawingSegment.prototype = {
             }
         this.trainpathbg.plot(this.coordinates);
 
-        this.reposition_labels();
+        this.redraw_labels();
     },
-    reposition_labels: function () {
-        this.reposition_label('entry', this.entrylabel);
-        this.reposition_label('exit', this.exitlabel);
+    redraw_labels: function () {
+        this.entrylabel.redraw();
+        this.exitlabel.redraw();
     },
-    reposition_label: function (mode, label) {
+    remove: function () {
+    },
+}
+
+ZWL.TrainLabel = function (segment, type) {
+    this.segment = segment; // TrainDrawingSegment
+    this.drawing = segment.drawing; // TrainDrawing
+    this.graph = segment.graph;
+    this.display = segment.display;
+    if (type != 'entry' && type != 'exit')
+        console.error('type not one of entry, exit');
+    this.type = type;
+    this.svg = this.segment.labelsvg.use(this.drawing.label.g);
+    this.svg.on('mouseenter', this.drawing.mouseenter.bind(segment));
+    this.svg.on('mouseleave', this.drawing.mouseleave.bind(segment));
+}
+ZWL.TrainLabel.prototype = {
+    redraw: function () {
         var coordinates;
-        if ( mode == 'entry') {
-            coordinates = this.coordinates;
-        } else if ( mode == 'exit') {
+        if ( this.type == 'entry') {
+            coordinates = this.segment.coordinates;
+        } else if ( this.type == 'exit') {
             // same, we just search in the other direction
-            coordinates = this.coordinates.slice().reverse();
+            coordinates = this.segment.coordinates.slice().reverse();
         } else {
-            return console.error('no such mode: ' + mode);
+            return console.error('no such type: ' + this.type);
         }
 
         var x = y = orientation = null;
@@ -737,7 +744,7 @@ ZWL.TrainDrawingSegment.prototype = {
             //TODO use `[x,y] =` as soon as chrome supports it. same further below
             x = coordinates[0][0];
             y = coordinates[0][1];
-            if ( mode == 'entry' )
+            if ( this.type == 'entry' )
                 orientation = this.segment.direction == 'left' ? 'right' : 'left';
             else
                 orientation = this.segment.direction;
@@ -759,7 +766,7 @@ ZWL.TrainDrawingSegment.prototype = {
                 y2 = coordinates[i][1];
 
                 // intersection with top / bottom / left / right edge, respectively
-                if ( mode == 'entry' ) {
+                if ( this.type == 'entry' ) {
                     if ( int_x = intersecthorizseg(top_y, left_x, right_x, x1,y1,x2,y2) ) {
                         x = int_x, y = top_y, orientation = 'top'; break;
                     }
@@ -768,11 +775,11 @@ ZWL.TrainDrawingSegment.prototype = {
                         x = int_x, y = bottom_y, orientation = 'bottom'; break;
                     }
                 }
-                if ( this.segment.direction == 'right' ? mode == 'entry' : mode == 'exit' ) {
+                if ( this.segment.direction == 'right' ? this.type == 'entry' : this.type == 'exit' ) {
                     if ( int_y = intersectvertseg(left_x, top_y, bottom_y, x1,y1,x2,y2) ) {
                         x = left_x, y = int_y, orientation = 'left'; break;
                     }
-                } else /* (dir=right and mode=exit) or (dir=left and mode entry) */ {
+                } else /* (dir=right and type=exit) or (dir=left and type=entry) */ {
                     if ( int_y = intersectvertseg(right_x, top_y, bottom_y, x1,y1,x2,y2) ) {
                         x = right_x, y = int_y, orientation = 'right'; break;
                     }
@@ -781,24 +788,21 @@ ZWL.TrainDrawingSegment.prototype = {
         }
 
         if ( x == null || y == null || orientation == null ) {
-            label.hide();
+            this.svg.hide();
         } else {
-            label.show();
+            this.svg.show();
             x = Math.floor(x); y = Math.floor(y); // avoid lines "between pixels"
-            var bb = label.bbox();
+            var bb = this.svg.bbox();
             if ( orientation == 'left') {
-                label.translate(x-bb.width-5,y-bb.height/2);
+                this.svg.translate(x-bb.width-5,y-bb.height/2);
             } else if ( orientation == 'right') {
-                label.translate(x+5,y-bb.height/2);
+                this.svg.translate(x+5,y-bb.height/2);
             } else if ( orientation == 'top') {
-                label.translate(x-bb.width/2,y-bb.height-5);
+                this.svg.translate(x-bb.width/2,y-bb.height-5);
             } else if ( orientation == 'bottom') {
-                label.translate(x-bb.width/2,y+5);
+                this.svg.translate(x-bb.width/2,y+5);
             }
         }
-    },
-
-    remove: function () {
     },
 }
 
@@ -811,7 +815,6 @@ ZWL.LineConfiguration = function (obj) {
         this.elements_by_id[e.id] = e;
     }
 }
-
 ZWL.LineConfiguration.prototype = {
     getElement: function ( id ) {
         return this.elements_by_id[id];
