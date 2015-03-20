@@ -37,7 +37,7 @@ ZWL.Display = function (element, viewconfig) {
 
     this.timezoom = .25; // can be overridden by viewconfig. pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
-    this.now = 13095034;
+    this.now = 13095468;
     this.starttime = this.now - 600;
     this.endtime = null;
 
@@ -234,7 +234,7 @@ ZWL.Graph.prototype = {
         if (arguments.length < 4) console.error('not enough arguments');
 
         // position and dimensions of the graph box
-        // round everything avoid getting 2px gray lines (instead of 1px black)
+        // round everything, to ensure lines are 1px black instead of 2px gray
         this.boxx = Math.floor(x);
         this.boxy = Math.floor(y);
         this.boxwidth = Math.ceil(width);
@@ -283,7 +283,7 @@ ZWL.Graph.prototype = {
         this.linegetter.done(this.late_redraw.bind(this));
     },
     late_redraw: function () {
-        // code that can only be run after this.line is loaded
+        // redraw() code that can only be run after this.line is loaded
 
         for ( var i in this.line.elements ) {
             var loc = this.line.elements[i];
@@ -312,12 +312,13 @@ ZWL.Graph.prototype = {
     fetch_trains: function () {
         var bb = this.graphdatafetcherthrobber.bbox()
         if ( this.display.oldstarttime != undefined
-             && this.display.oldstarttime < this.display.starttime )
-            this.graphdatafetcherthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
-                                           this.boxy + 5);
+                && this.display.oldstarttime < this.display.starttime )
+            this.graphdatafetcherthrobber.move(
+                    this.boxx + (this.boxwidth-bb.width) / 2, this.boxy + 5);
         else
-            this.graphdatafetcherthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
-                                           this.boxy + this.boxheight-bb.height-5);
+            this.graphdatafetcherthrobber.move(
+                    this.boxx + (this.boxwidth-bb.width) / 2,
+                    this.boxy + this.boxheight-bb.height-5);
         this.graphdatafetcherthrobber.show();
 
         this.graphdatafetcher = $.getJSON(
@@ -341,8 +342,10 @@ ZWL.Graph.prototype = {
                         //TODO: only if timetable changed
                         this.trains[train.nr].drawing.update();
                     } else {
+                        // `new TrainDrawing` requires trains[nr].info
                         this.trains[train.nr] = {'info': info};
-                        this.trains[train.nr].drawing = new ZWL.TrainDrawing(this, train.nr);
+                        this.trains[train.nr].drawing =
+                            new ZWL.TrainDrawing(this, train.nr);
                     }
                 }
 
@@ -429,7 +432,7 @@ ZWL.TimeAxis = function ( display ) {
     var timeaxis = this; // `this` is overridden in dragging functions
     this.axis.dragstart = function (delta, event) {
         this.addClass('grabbing');
-    }
+    };
     this.axis.dragmove = function (delta, event) {
         timeaxis.display.timechange(timeaxis.display.y2time((-this.transform().y)));
     };
@@ -552,11 +555,11 @@ ZWL.TrainDrawing = function (graph, trainnr) {
         this.pathsvg.addClass('category_' + this.train.info.category);
         this.labelsvg.addClass('category_' + this.train.info.category);
     }
-    this._create_drawingsegments();
+    this._create_segments();
 }
 
 ZWL.TrainDrawing.prototype = {
-    _create_drawingsegments: function () {
+    _create_segments: function () {
         this.segments = this.train.info.segments.map(function (segment) {
             return new ZWL.TrainDrawingSegment(this, segment);
         }.bind(this));
@@ -573,7 +576,7 @@ ZWL.TrainDrawing.prototype = {
     update: function () {
         if ( this.train.info.segments.length != this.segments.length ) {
             this.segments.map(function (segment) { segment.remove(); });
-            this._create_drawingsegments();
+            this._create_segments();
         } else {
             this.segments.map(function (segment) { segment.update(); });
         }
