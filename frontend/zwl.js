@@ -173,7 +173,6 @@ ZWL.Graph = function (display, linename, viewcfg) {
     this.trainclip = this.svg.clip().add(this.traincliprect);
     this.trainbox = this.svg.group().addClass('trainbox');
     this.trainpaths = this.trainbox.group().addClass('trainpaths');
-    this.trainlabels = this.trainbox.group().addClass('trainlabels');
 
     // quickfix for firefox, see issue #24
     this.trainboxframe.on('mouseenter', function() {
@@ -182,6 +181,7 @@ ZWL.Graph = function (display, linename, viewcfg) {
 
     this.nowmarker = this.trainbox.line(-1,-1,-1,-1).addClass('nowmarker')
         .clipWith(this.trainclip);
+    this.trainlabels = this.trainbox.group().addClass('trainlabels');
 
     this.pastblur = {};
     this.pastblur.group = this.trainbox.group().addClass('pastblur');
