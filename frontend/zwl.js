@@ -87,10 +87,8 @@ ZWL.Display.prototype = {
 
         this.viewconfig.sizechange(this, width, height);
     },
-    timechange: function (starttime) {
+    timechange: function () {
         // this runs lots of times while the user moves the time axis, so keep it short!
-
-        this.starttime = starttime;
 
         this.timeaxis.timechange();
         this.graphs.map(function(g) {
@@ -432,7 +430,8 @@ ZWL.TimeAxis = function ( display ) {
         this.addClass('grabbing');
     };
     this.axis.dragmove = function (delta, event) {
-        timeaxis.display.timechange(timeaxis.display.y2time((-this.transform().y)));
+        timeaxis.display.starttime = timeaxis.display.y2time((-this.transform().y));
+        timeaxis.display.timechange();
     };
     this.axis.dragend = function (delta, event) {
         this.removeClass('grabbing');
