@@ -183,12 +183,12 @@ ZWL.Graph = function (display, linename, viewcfg) {
         .clipWith(this.trainclip);
     this.trainlabels = this.trainbox.group().addClass('trainlabels');
 
-    this.pastblur = {};
-    this.pastblur.group = this.trainbox.group().addClass('pastblur');
-    this.pastblur.past = this.pastblur.group.rect(0,0).addClass('pastblur-past');
-    this.pastblur.future = this.pastblur.group.rect(0,0)
-        .addClass('pastblur-future');
-    this.pastblur.mask = this.svg.mask().add(this.pastblur.group);
+    this.pastfade = {};
+    this.pastfade.group = this.trainbox.group().addClass('pastfade');
+    this.pastfade.past = this.pastfade.group.rect(0,0).addClass('pastfade-past');
+    this.pastfade.future = this.pastfade.group.rect(0,0)
+        .addClass('pastfade-future');
+    this.pastfade.mask = this.svg.mask().add(this.pastfade.group);
 
     this.locaxis = {};
     this.locaxis.g = this.svg.group().addClass('locaxis');
@@ -266,10 +266,10 @@ ZWL.Graph.prototype = {
         this.locaxis.g.translate(this.boxx, this.boxy-this.measures.locaxisoverbox);
         this.locaxis.bottom.translate(this.boxx, this.boxy + this.boxheight
             + this.measures.locaxisunderbox);
-        this.pastblur.past
+        this.pastfade.past
             .size(this.drawwidth, this.display.time2y(this.display.now))
             .move(this.pos2x(0), 0);
-        this.pastblur.future
+        this.pastfade.future
             .size(this.drawwidth, 999999)
             .move(this.pos2x(0), this.display.time2y(this.display.now));
 
@@ -604,10 +604,10 @@ ZWL.TrainDrawingSegment = function (drawing, timetablesegment) {
     // bg = invisible, thicker path to allow easier pointing
     this.trainpath = this.pathsvg.group().addClass('trainpath')
         .clipWith(this.graph.trainclip)
-        .maskWith(this.graph.pastblur.mask);
+        .maskWith(this.graph.pastfade.mask);
     this.trainpathbg = this.pathsvg.polyline().addClass('trainpathbg')
         .clipWith(this.graph.trainclip)
-        .maskWith(this.graph.pastblur.mask);
+        .maskWith(this.graph.pastfade.mask);
 
     this.entrylabel = new ZWL.TrainLabel(this, 'entry');
     this.exitlabel = new ZWL.TrainLabel(this, 'exit');

@@ -19,8 +19,8 @@ text { fill: white; }
 .trainlabel text { fill: white; pointer-events: none; }
 
 .nowmarker { stroke: #fe0; stroke-width: 2px; }
-.pastblur { stroke: none; fill: white; }
-.pastblur-past { fill-opacity: .4; }
+.pastfade { stroke: none; fill: white; }
+.pastfade-past { fill-opacity: .4; }
 
 .trainboxframe { stroke: white; stroke-width: 1px; fill: #222; }
 
