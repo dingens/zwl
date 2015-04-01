@@ -68,7 +68,6 @@ def get_train_information(trains, line):
             'category': train.category,
             'nr': train.nr,
             'segments': segments,
-            'timetable_hash': 0, #TODO
             'transition_to': train.transition_to_nr,
             'transition_from': train.transition_from_nr,
             'comment': u'',
