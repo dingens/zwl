@@ -123,9 +123,9 @@ ZWL.Display.prototype = {
         return y / this.timezoom + this.epoch;
     },
     _parse_viewconfig: function(vc) {
+        if ( vc == '' )
+            vc = DEFAULT_VIEWCONFIG;
         if ( vc.indexOf('/') == -1 ) {
-            if ( vc == '' )
-                vc = DEFAULT_LINE;
             var args = [vc];
             var method = 'gt';
         } else {
@@ -475,9 +475,9 @@ ZWL.TimeAxis.prototype = {
             this.times[time].remember('unused', true);
         }
         var onescreen = this.height / this.display.timezoom;
+        var t, text, line;
         var time = Math.floor((this.display.starttime - onescreen) / 60) * 60
         var end = time + 3*onescreen + 120;
-        var t, text, line;
         for ( ; time < end; time += 60 ) {
             if ( !(time in this.times )) {
                 t = this.times[time] = this.axis.group();
@@ -711,8 +711,8 @@ ZWL.TrainLabel = function (segment, type) {
         console.error('type not one of entry, exit');
     this.type = type;
     this.svg = this.segment.labelsvg.use(this.drawing.label.g);
-    this.svg.on('mouseenter', this.drawing.mouseenter.bind(segment));
-    this.svg.on('mouseleave', this.drawing.mouseleave.bind(segment));
+    this.svg.on('mouseenter', this.drawing.mouseenter.bind(this.drawing));
+    this.svg.on('mouseleave', this.drawing.mouseleave.bind(this.drawing));
 }
 ZWL.TrainLabel.prototype = {
     redraw: function () {
@@ -808,6 +808,8 @@ ZWL.TrainLabel.prototype = {
 ZWL.LineConfiguration = function (obj) {
     this.name = obj.name;
     this.elements = obj.elements;
+
+    // speed up lookup. Used by getElement()
     this.elements_by_id = {};
     for ( var i in this.elements ) {
         var e = this.elements[i];

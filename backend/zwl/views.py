@@ -139,7 +139,7 @@ def favicon():
 def js_variables():
     vars = {
         'SCRIPT_ROOT': request.script_root,
-        'DEFAULT_LINE': 'ring-xwf',
+        'DEFAULT_VIEWCONFIG': 'gt/ring-xwf,.01,.99',
         'ALL_LINES': {l.id: l.name for l in lines.values()},
     }
     return Response(('%s = %s;\n' % (k, json.htmlsafe_dumps(v))
