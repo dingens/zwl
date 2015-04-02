@@ -35,7 +35,7 @@ ZWL.Display = function (element, viewconfig) {
     // two gray ones. Chrome doesn't accept the translate on <svg>, only on <g>
     this.svg = this.svgelem.group().translate(0.5, 0.5);
 
-    this.timezoom = .25; // can be overridden by viewconfig. pixels per second
+    this.timezoom = 1/4; // can be overridden by viewconfig. pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
     this.now = 13095468;
     this.starttime = this.now - 600;
@@ -830,7 +830,8 @@ ZWL.ViewConfig = function (method, allargs) {
         if ( a == '' )
             continue;
         else if ( a.substr(0,3) == 'tz=' )
-            this.timezoom = parseFloat(a.substr(3));
+            // internally we use px/s, in the ui px/min
+            this.timezoom = parseFloat(a.substr(3))/60;
         else
             this.args.push(a);
     }
