@@ -71,6 +71,8 @@ def get_train_information(trains, line):
             'transition_to': train.transition_to_nr,
             'transition_from': train.transition_from_nr,
             'comment': u'',
+            'start': timetables[tid][0].loc,
+            'end': timetables[tid][-1].loc,
         }
 
 

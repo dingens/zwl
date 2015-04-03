@@ -331,7 +331,7 @@ ZWL.Graph.prototype = {
                     this.trains[tnr]._unused = true;
                 for ( var i in data.trains ) {
                     var train = data.trains[i];
-                    var info = new ZWL.TrainInfo.from_object(train);
+                    var info = new ZWL.TrainInfo(train);
                     if ( train.nr in this.trains ) {
                         delete this.trains[train.nr]._unused;
                         this.trains[train.nr].info = info;
@@ -512,16 +512,17 @@ ZWL.TimeAxis.prototype = {
     },
 }
 
-ZWL.TrainInfo = function (type, nr, segments, category, comment) {
-    this.type = type;
-    this.nr = nr;
-    this.segments = segments;
-    this.category = category;
-    this.comment = comment;
-    this.name = this.type + ' ' + this.nr.toString();
-}
-ZWL.TrainInfo.from_object = function (o) {
-    return new ZWL.TrainInfo(o.type, o.nr, o.segments, o.category, o.comment);
+ZWL.TrainInfo = function (o) {
+    this.type = o.type;
+    this.nr = o.nr;
+    this.segments = o.segments;
+    this.category = o.category;
+    this.comment = o.comment;
+    this.start = o.start;
+    this.end = o.end;
+
+    this.title = this.type + ' ' + this.nr.toString() +
+        ' (' + this.start + '->' + this.end + ')';
 }
 
 ZWL.TrainDrawing = function (graph, trainnr) {
@@ -530,13 +531,13 @@ ZWL.TrainDrawing = function (graph, trainnr) {
 
     this.pathsvg = this.graph.trainpaths.group()
         .addClass('trainpathg').addClass('train' + this.train.info.nr)
-        .attr('title', this.train.info.name);
+        .attr('title', this.train.info.title);
     this.pathsvg.on('mouseenter', this.mouseenter.bind(this));
     this.pathsvg.on('mouseleave', this.mouseleave.bind(this));
 
     this.labelsvg = this.graph.trainlabels.group()
         .addClass('trainlabelg').addClass('train'+ this.train.info.nr)
-        .attr('title', this.train.info.name);
+        .attr('title', this.train.info.title);
 
     // precreate label (used multiple times by the segments)
     var gm = this.graph.measures;
