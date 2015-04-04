@@ -7,10 +7,6 @@
 # http://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls
 SQLALCHEMY_DATABASE_URI = None
 
-# Normally we use the session timetable tables, i.e. `fahrplan_sessionzuege`,
-# Set this to False to use `fahrplan_zuege`.
-USE_SESSION_TIMETABLE = True
-
 # IP address or hostname and port of the clock server
 CLOCK_SERVER = ('192.168.17.5', 4711)
 
