@@ -18,7 +18,7 @@ text { fill: white; }
 .trainlabel rect { fill: #111; stroke: none; }
 .trainlabel text { fill: white; pointer-events: none; }
 
-.nowmarker { stroke: #fe0; stroke-width: 2px; }
+.nowmarker { stroke: #fe0; stroke-width: 2px; pointer-events: none; }
 .pastfade { stroke: none; fill: white; }
 .pastfade-past { fill-opacity: .4; }
 
@@ -33,6 +33,7 @@ text { fill: white; }
 .timeaxis .axis.grabbing { cursor: -webkit-grabbing; cursor: grabbing; }
 .timeaxis g text { fill: white; }
 .timeaxis-bg { fill: #111; }
+.timeaxis .clock { pointer-events: none; }
 .timeaxis .clock rect { fill: #111; opacity: .6; }
 .timeaxis .clock text { font-size: 14pt; font-weight: bold; fill: #fe0; }
 
