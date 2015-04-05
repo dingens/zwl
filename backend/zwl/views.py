@@ -6,20 +6,21 @@ from time import sleep
 from werkzeug.exceptions import NotFound
 from zwl import app
 from zwl.database import Train
-from zwl.lines import lines, get_line
+from zwl.lines import lineconfigs, get_lineconfig
 from zwl.trains import get_train_ids_within_timeframe, get_train_information
 from zwl.utils import js2time, time2js, get_time
 
+@app.route('/lines/')
 @app.route('/lines/<key>.json')
-def get_lines(key=None):
+def get_line(key=None):
     sleep(app.config['RESPONSE_DELAY'])
     if key is None:
-        return Response('\n'.join(lines.keys()), mimetype='text/plain')
+        return Response('\n'.join(lineconfigs.keys()), mimetype='text/plain')
 
-    if key not in lines:
+    if key not in lineconfigs:
         abort(404)
 
-    return jsonify(lines[key].serialize())
+    return jsonify(lineconfigs[key].serialize())
 
 
 @app.route('/graphdata/<line>.json')
@@ -80,7 +81,7 @@ def get_graph_data(line):
         ])
 
     try:
-        line = get_line(line)
+        line = get_lineconfig(line)
     except KeyError:
         abort(404)
 
@@ -140,7 +141,7 @@ def js_variables():
     vars = {
         'SCRIPT_ROOT': request.script_root,
         'DEFAULT_VIEWCONFIG': 'gt/ring-xwf,.01,.99',
-        'ALL_LINES': {l.id: l.name for l in lines.values()},
+        'ALL_LINECONFIGS': {l.id: l.name for l in lineconfigs.values()},
     }
     return Response(('%s = %s;\n' % (k, json.htmlsafe_dumps(v))
                      for (k,v) in vars.items()),

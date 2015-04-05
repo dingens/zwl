@@ -49,7 +49,7 @@ ZWL.Display = function (element, viewconfig) {
         this.viewconfig.apply(this);
 
         var graphNames = this.graphs.map(function(g) {
-            return ALL_LINES[g.linename];
+            return ALL_LINECONFIGS[g.linename];
         });
         document.title = graphNames.join(' / ') + ' - ZWL - EBuEF';
 
@@ -221,7 +221,7 @@ ZWL.Graph.from_string = function (display, vc) {
     var linename = cfg.shift();
     if ( linename == '' )
         throw new ZWL.ViewConfigParseError('keine Strecke angegeben');
-    if ( ! ALL_LINES.hasOwnProperty(linename) )
+    if ( ! ALL_LINECONFIGS.hasOwnProperty(linename) )
         throw new ZWL.ViewConfigParseError('ungültiger Streckenname: ' + linename);
     return new ZWL.Graph(display, linename, cfg);
 };

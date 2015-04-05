@@ -5,7 +5,7 @@ from collections import defaultdict, deque, OrderedDict
 from datetime import date, datetime, time
 from zwl import app, db
 from zwl.database import *
-from zwl.lines import get_line
+from zwl.lines import get_lineconfig
 from zwl.utils import time2js
 
 def get_train_ids_within_timeframe(starttime, endtime, line,
@@ -16,7 +16,7 @@ def get_train_ids_within_timeframe(starttime, endtime, line,
     """
     #TODO allow to filter for stations between xstart and xend
 
-    line = get_line(line)
+    line = get_lineconfig(line)
     locations = {l.code for l in
         line.locations_extended_between(startpos, endpos)}
 
@@ -39,7 +39,7 @@ def get_train_information(trains, line):
     @param trains: List of train ids or `Train` objects.
     @param line: `Line` object or line id.
     """
-    line = get_line(line)
+    line = get_lineconfig(line)
 
     if not trains:
         return

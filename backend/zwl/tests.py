@@ -8,7 +8,7 @@ import warnings
 from datetime import timedelta, time
 from zwl import app, db, trains
 from zwl.database import *
-from zwl.lines import get_line
+from zwl.lines import get_lineconfig
 from zwl.predict import Manager, Journey
 from zwl.utils import MidnightWarning, timeadd, timediff
 
@@ -57,15 +57,15 @@ class TestTrains(ZWLTestCase):
         db.session.flush()
 
     def test_get_train_ids_within_timeframe(self):
-        ids = trains.get_train_ids_within_timeframe(time(15,40), time(16,00), get_line('sample'))
+        ids = trains.get_train_ids_within_timeframe(time(15,40), time(16,00), get_lineconfig('sample'))
         assert self.t1.id in ids
         assert self.t3.id not in ids
 
-        ids = trains.get_train_ids_within_timeframe(time(15,00), time(15,36), get_line('sample'), startpos=0, endpos=.2)
+        ids = trains.get_train_ids_within_timeframe(time(15,00), time(15,36), get_lineconfig('sample'), startpos=0, endpos=.2)
         self.assertEqual(ids, [])
 
     def test_get_train_information(self):
-        res = list(trains.get_train_information([self.t1], get_line('sample')))
+        res = list(trains.get_train_information([self.t1], get_lineconfig('sample')))
 
         assert len(res) == 1
         inf = res[0]
@@ -83,7 +83,7 @@ class TestTrains(ZWLTestCase):
         #assert allelemsd['XLG#1']['pred'] == 'XWF'
 
     def test_locations_extended_between(self):
-        line = get_line('sample')
+        line = get_lineconfig('sample')
         locs = list(line.locations_extended_between())
         assert locs == line.locations
 

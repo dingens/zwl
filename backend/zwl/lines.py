@@ -1,16 +1,16 @@
 # -*- coding: utf8 -*-
 from werkzeug.utils import cached_property
 
-def get_line(line):
-    if line is None:
-        return line
+def get_lineconfig(lc):
+    if lc is None:
+        return lc
 
-    if isinstance(line, Line):
-        return line
+    if isinstance(lc, LineConfig):
+        return lc
 
-    return lines[line]
+    return lineconfigs[lc]
 
-class Line(object):
+class LineConfig(object):
     def __init__(self, id, name, elements):
         self.id = id
         self.name = name
@@ -38,7 +38,7 @@ class Line(object):
 
     @cached_property
     def locations(self):
-        """All elements of the line that are not open line segments."""
+        """All elements of the lineconfig that are not open line segments."""
         return [e for e in self.elements if isinstance(e, Loc)]
 
     def locations_extended_between(self, startpos=0, endpos=1):
@@ -84,11 +84,11 @@ class Line(object):
         )
 
     def __repr__(self):
-        return '<Line %s #elem=%d>' % (self.id, len(self.elements))
+        return '<LineConfig %s #elem=%d>' % (self.id, len(self.elements))
 
 
 class Elem(object):
-    """Baseclass for all line element types. Not to be used directly."""
+    """Baseclass for all lineconfig element types. Not to be used directly."""
     display_label = False
 
     def __init__(self, id, pos):
@@ -122,7 +122,9 @@ class OpenLine(Elem):
         )
 
 class Loc(Elem):
-    """Baseclass for all line element types that are points (ie no open line)"""
+    """
+    Baseclass for all lineconfig element types that are points (ie no open line)
+    """
     def __init__(self, id, pos, name=None):
         super(Loc, self).__init__(id, pos)
         self.code, _ = self.id.split('#') # ensure id contains exactly one `#`
@@ -168,13 +170,13 @@ class Siding(Loc):
     typecode = 'anst'
     display_label = False
 
-lines = {}
-def add_line(*args, **kwargs):
-    l = Line(*args, **kwargs)
-    assert l.id not in lines
-    lines[l.id] = l
+lineconfigs = {}
+def add_lineconfig(*args, **kwargs):
+    l = LineConfig(*args, **kwargs)
+    assert l.id not in lineconfigs
+    lineconfigs[l.id] = l
 
-add_line('sample', u'Beispielsträcke', [
+add_lineconfig('sample', u'Beispielsträcke', [
     Station('XDE#1', 0, u'Derau'),
     OpenLine('XDE#1_XCE#1', 15, 3000, 2),
     Station('XCE#1', 30, u'Cella'),
@@ -186,7 +188,7 @@ add_line('sample', u'Beispielsträcke', [
     Station('XDE#2', 100, u'Derau'),
 ])
 
-add_line('ring-xwf', u'Ring, XWF-XCE-XDE-XBG-XWF', [
+add_lineconfig('ring-xwf', u'Ring, XWF-XCE-XDE-XBG-XWF', [
     Signal('XWF_F#1', 0, 'right'),
     Signal('XWF_N#1', 0, 'left'),
     Station('XWF#1', 1, u'Walfdorf'),
@@ -236,7 +238,7 @@ add_line('ring-xwf', u'Ring, XWF-XCE-XDE-XBG-XWF', [
     Signal('XWF_A#3', 100, 'left'),
 ])
 
-add_line('ring-xde', u'Ring, XDE-XBG-XWF-XCE-XDE', [
+add_lineconfig('ring-xde', u'Ring, XDE-XBG-XWF-XCE-XDE', [
     Signal('XDE_F#1', 0, 'right'),
     Signal('XDE_N#1', 0, 'left'),
     Station('XDE#1', 1, u'Derau'),
@@ -287,7 +289,7 @@ add_line('ring-xde', u'Ring, XDE-XBG-XWF-XCE-XDE', [
 ])
 
 
-add_line('xab-xws', u'XAB-XLG-XWF-XWS', [
+add_lineconfig('xab-xws', u'XAB-XLG-XWF-XWS', [
     #TODO distances XAB--XPN
     Station('XAB#1', 0, u'Ausblick'),
     Signal('XAB_P#1', 2, 'right'),
