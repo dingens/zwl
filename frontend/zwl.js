@@ -347,7 +347,6 @@ ZWL.Graph.prototype = {
 
                 for ( var tnr in this.trains ) {
                     if ( this.trains[tnr]._unused ) {
-                        console.log('delete unused train ' + tnr);
                         this.trains[tnr].drawing.remove();
                         delete this.trains[tnr];
                     }
@@ -632,15 +631,15 @@ ZWL.TrainDrawingSegment.prototype = {
                         'line': lastline.line,
                         'opposite': lastline.opposite,
                         'start': laststop.loc,
-                        'dep_real': laststop.dep_real,
+                        'dep_plan': laststop.dep_plan,
                         'end': tte.loc,
-                        'arr_real': tte.arr_real,
+                        'arr_plan': tte.arr_plan,
                     });
                 }
                 this.elements.push({
                     'loc': tte.loc,
-                    'arr_real': tte.arr_real,
-                    'dep_real': tte.dep_real,
+                    'arr_plan': tte.arr_plan,
+                    'dep_plan': tte.dep_plan,
                 });
                 laststop = tte;
                 lastline = {}
@@ -669,9 +668,9 @@ ZWL.TrainDrawingSegment.prototype = {
                 var elem = this.elements[i];
                 if ( 'line' in elem ) {
                     var x1 = this.graph.pos2x(elem.start);
-                    var y1 = this.display.time2y(elem.dep_real);
+                    var y1 = this.display.time2y(elem.dep_plan);
                     var x2 = this.graph.pos2x(elem.end);
-                    var y2 = this.display.time2y(elem.arr_real);
+                    var y2 = this.display.time2y(elem.arr_plan);
 
                     this.coordinates.push([x1, y1], [x2, y2]);
 
@@ -679,13 +678,13 @@ ZWL.TrainDrawingSegment.prototype = {
                     if ( elem.opposite == true ) elem.path.addClass('opposite');
 
                 } else if ( 'loc' in elem
-                        && elem.arr_real != null
-                        && elem.dep_real != null
-                        && elem.arr_real != elem.dep_real ) {
+                        && elem.arr_plan != null
+                        && elem.dep_plan != null
+                        && elem.arr_plan != elem.dep_plan ) {
 
                     var x = this.graph.pos2x(elem.loc);
-                    var y1 = this.display.time2y(elem.arr_real);
-                    var y2 = this.display.time2y(elem.dep_real);
+                    var y1 = this.display.time2y(elem.arr_plan);
+                    var y2 = this.display.time2y(elem.dep_plan);
 
                     elem.path = this.trainpath.line(x, y1, x, y2);
                     this.coordinates.push([x, y1], [x, y2]);

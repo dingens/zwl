@@ -35,13 +35,13 @@ def get_graph_data(line):
              'segments': [
                {
                  'timetable': [
-                   {'loc':'XDE#1', 'arr_real':None, 'dep_real':13099020},
+                   {'loc':'XDE#1', 'arr_plan':None, 'dep_plan':13099020},
                    {'line':'XDE#1_XCE#1'},
-                   {'loc':'XCE#1', 'arr_real':13099200, 'dep_real':13099260},
+                   {'loc':'XCE#1', 'arr_plan':13099200, 'dep_plan':13099260},
                    {'line':'XCE#1_XLG#1'},
-                   {'loc':'XLG#1', 'arr_real':13099500, 'dep_real':13099500},
+                   {'loc':'XLG#1', 'arr_plan':13099500, 'dep_plan':13099500},
                    {'line':'XLG#1_XDE#2'},
-                   {'loc':'XDE#2', 'arr_real':13099800, 'dep_real':None},
+                   {'loc':'XDE#2', 'arr_plan':13099800, 'dep_plan':None},
                  ],
                  'direction': 'right',
                },
@@ -54,9 +54,9 @@ def get_graph_data(line):
              'segments': [
                {
                  'timetable': [
-                   {'loc':'XDE#2', 'arr_real':None, 'dep_real':13099440},
+                   {'loc':'XDE#2', 'arr_plan':None, 'dep_plan':13099440},
                    {'line':'XLG#1_XDE#2'},
-                   {'loc':'XLG#1', 'arr_real':13099740, 'dep_real':13099740},
+                   {'loc':'XLG#1', 'arr_plan':13099740, 'dep_plan':13099740},
                  ],
                  'direction': 'left',
                },
@@ -68,11 +68,11 @@ def get_graph_data(line):
              'segments': [
                {
                  'timetable': [
-                    {'loc':'XDE#1', 'arr_real':None, 'dep_real':13099000},
+                    {'loc':'XDE#1', 'arr_plan':None, 'dep_plan':13099000},
                     {'line':'XDE#1_XCE#1', 'opposite':True},
-                    {'loc':'XCE#1', 'arr_real':13099140, 'dep_real':13099140},
+                    {'loc':'XCE#1', 'arr_plan':13099140, 'dep_plan':13099140},
                     {'line':'XCE#1_XLG#1'},
-                    {'loc':'XDE#2', 'arr_real':13099460, 'dep_real':None},
+                    {'loc':'XDE#2', 'arr_plan':13099460, 'dep_plan':None},
                  ],
                  'direction': 'right',
                },

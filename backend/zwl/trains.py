@@ -103,8 +103,8 @@ def make_timetable(train, timetable_entries, line):
     def _add(seg, loc, tte, **kwargs):
         seg['timetable'].append(dict(
             loc=loc.id,
-            arr_real=time2js(tte.arr_plan), #TODO use _real when available
-            dep_real=time2js(tte.dep_plan),
+            arr_plan=time2js(tte.arr_plan), #TODO use _real when available
+            dep_plan=time2js(tte.dep_plan),
             **kwargs
         ))
 

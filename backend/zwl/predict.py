@@ -50,7 +50,11 @@ class Journey(object):
                                     Location(current.loc, current.track_want))
 
                 if last_action is not None:
+                    # this is guaranteed to be executed directly after
+                    # `last_action` has been yielded, because it is before the
+                    # next yield statement.
                     last_action.set_expected_release_time(action.time)
+
                 result = (yield action)
                 if not isinstance(result, Admitted):
                     raise ValueError('expected admission, got %r' % result)
@@ -252,6 +256,7 @@ class Action(object):
 
     def set_expected_release_time(self, rtime):
         for e in self.required_elements:
+            assert self.manager.elements[e]
             self.manager.elements[e].expected_release_time = rtime
 
     def allocate(self, manager):
