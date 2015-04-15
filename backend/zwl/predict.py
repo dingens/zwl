@@ -1,6 +1,6 @@
 # -*- coding: utf8 -*-
 from collections import defaultdict, namedtuple
-from datetime import timedelta
+from datetime import datetime, date, time, timedelta
 from math import ceil
 from zwl import app, db
 from zwl.database import Train, TimetableEntry, MinimumStopTime
@@ -61,6 +61,9 @@ class Journey(object):
 
                 if current.dep_want is None:
                     # train ends here, we're done
+                    result = (yield EndJourney(self, action.time))
+                    if not isinstance(result, Admitted):
+                        raise ValueError('expected admission, got %r' % result)
                     break
 
             ### section two: handle ride to next location
@@ -139,7 +142,7 @@ class Journey(object):
 
         else:
             if last.min_ridetime is not None:
-                min_ridetime = last.min_ridetime
+                min_ridetime = timedelta(seconds=last.min_ridetime)
             else:
                 ridetime = timediff(current.arr_want, last.dep_want).total_seconds()
                 ratio = app.config['MINIMUM_TRAVEL_TIME_RATIO']
@@ -161,15 +164,19 @@ class Journey(object):
 
         #TODO: if too early, only wait in stations
         arr = cur.arr_real if cur.arr_real is not None else cur.arr_pred
-        if cur.min_stoptime is not None:
-            min_stoptime = cur.min_stoptime
-        else:
-            min_stoptime = MinimumStopTime.lookup(self.train, cur.loc,
-                    cur.track_real or cur.track_want)
-        min_stoptime = timedelta(seconds=min_stoptime)
 
         planned_stoptime = timediff(cur.dep_want, cur.arr_want)
-        min_stoptime = min(min_stoptime, planned_stoptime)
+        if planned_stoptime.total_seconds() == 0:
+            min_stoptime = planned_stoptime
+        else:
+            if cur.min_stoptime is not None:
+                min_stoptime = cur.min_stoptime
+            else:
+                min_stoptime = MinimumStopTime.lookup(self.train, cur.loc,
+                        cur.track_real or cur.track_want)
+            min_stoptime = timedelta(seconds=min_stoptime)
+
+            min_stoptime = min(min_stoptime, planned_stoptime)
 
         return max(self.now, cur.dep_want, timeadd(arr, min_stoptime))
 
@@ -208,7 +215,7 @@ class Manager(object):
 
 
     @classmethod
-    def from_timestamp(cls, now):
+    def from_timestamp(cls, starttime):
         """
         Initialize using a given start time.
 
@@ -216,15 +223,15 @@ class Manager(object):
         time are used.
         """
         d = timedelta(seconds=app.config['PREDICTION_INTERVAL'])
-        endtime = (datetime.combine(date(1,1,1), now) + d).time()
+        endtime = (datetime.combine(date(1,1,1), starttime) + d).time()
         endtime = max(endtime, time(23,59,59)) #TODO after-midnight support
 
         q = db.session.query(TimetableEntry.train_id) \
-            .filter(TimetableEntry.sorttime.between(starttime.time(), endtime))
+            .filter(TimetableEntry.sorttime.between(starttime, endtime))
 
         trains = Train.query.filter(Train.id.in_(q)).all()
 
-        return cls.from_trains(trains, now)
+        return cls.from_trains(trains, starttime)
 
     @classmethod
     def from_trains(cls, trains, now):
@@ -270,6 +277,7 @@ class Action(object):
             elem = manager.elements[elem_name]
             if elem is None or elem.journey is self.journey:
                 continue
+            assert elem.expected_release_time is not None
             expected_release_times.append(elem.expected_release_time)
 
         # we cannot, there are occupied elements
@@ -341,12 +349,23 @@ class Ride(Action):
                 self.time.strftime('%T'), self.start.code, self.start.track,
                 self.end.code, self.end.track)
 
+class EndJourney(Action):
+    """
+    Train's ride has ended, remove occupation markings.
+    """
+    def find_required_elements(self):
+        return []
+
+    def __repr__(self):
+        return '<EndRide %r %s>' % (self.journey, self.time.strftime('%T'))
+
 class Response(object):
     """
     Baseclass for responses the Manager sends to the trains (represented by
     a Journey object) after they sent an `Action` they wish to execute.
     """
-    pass
+    def __repr__(self):
+        return '<%s>' % (self.__class__.__name__)
 
 class Admitted(Response):
     """
@@ -363,6 +382,9 @@ class NotFree(Response):
     def __init__(self, expected_release_time):
         self.expected_release_time = expected_release_time
         super(NotFree, self).__init__()
+
+    def __repr__(self):
+        return '<NotFree expected_release_time=%s>' % self.expected_release_time
 
 Location = namedtuple('Location', ['code', 'track'])
 Occupancy = writable_namedtuple('Occupancy', ['journey', 'expected_release_time'])
