@@ -1,12 +1,13 @@
 # -*- coding: utf8 -*-
 import os
-from datetime import datetime
+from datetime import datetime, time
 from flask import abort, send_from_directory, Response, json, request, jsonify
-from time import sleep
+from time import sleep, time as ttime
 from werkzeug.exceptions import NotFound
-from zwl import app
+from zwl import app, db
 from zwl.database import Train
 from zwl.lines import lineconfigs, get_lineconfig
+from zwl.predict import Manager
 from zwl.trains import get_train_ids_within_timeframe, get_train_information
 from zwl.utils import js2time, time2js, get_time
 
@@ -22,6 +23,17 @@ def get_line(key=None):
 
     return jsonify(lineconfigs[key].serialize())
 
+
+@app.route('/predict')
+def predict():
+    start = ttime()
+
+    Manager.from_timestamp(time(14,10)).run()
+    db.session.commit()
+
+    end = ttime()
+
+    return Response('done (%fs)' % (end - start), mimetype='text/plain')
 
 @app.route('/graphdata/<line>.json')
 def get_graph_data(line):
