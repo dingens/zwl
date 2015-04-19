@@ -94,19 +94,22 @@ def make_timetable(train, timetable_entries, line):
     appears multiple times on a line (e.g. if the line is a ring).
 
     Calculation assumes that one train passes every location only once. This
-    is safe because this is required by German railway regulations.
+    is safe because this is required by German railway regulations, and thus
+    enforced within EBuEf, too.
 
     Calculation is somewhat tolerant to small variations between the
-    locations on `line` and the entries in the timetable.
+    locations on `line` and the entries in the timetable (i.e. a new segment
+    is not started only because one signal is missing in the timetable.)
 
     Segments containing only one location (e.g. a train that starts on the
     last stop of a line, a train that just crosses a line) are not output
     (because they cannot be drawn by the frontend anyway).
 
-    :return: a list of segments, which themselves are a dict with two elements:
+    :return: a list of segments, each of which being a dict with two elements:
              - `direction` (either `left` or `right`)
              - `timetable` (list of dicts, one per location)
     """
+    # normally this is already sorted, but we better check that
     timetable_entries.sort(key=operator.attrgetter('sorttime'))
     timetable_locations = [e.loc for e in timetable_entries]
 
