@@ -1,4 +1,14 @@
 # -*- coding: utf8 -*-
+"""
+    zwl.predict
+    ===========
+
+    Prediction of train ride times based on the current traffic situation.
+
+    :copyright: (c) 2015, Marian Sigler
+    :license: GNU GPL 2.0 or later.
+"""
+
 from collections import defaultdict, namedtuple
 from datetime import datetime, date, time, timedelta
 from math import ceil

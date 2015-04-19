@@ -1,4 +1,14 @@
 # -*- coding: utf8 -*-
+"""
+    zwl.views
+    =========
+
+    The application's views.
+
+    :copyright: (c) 2015, Marian Sigler
+    :license: GNU GPL 2.0 or later.
+"""
+
 import os
 from datetime import datetime, time
 from flask import abort, send_from_directory, Response, json, request, jsonify

@@ -1,4 +1,14 @@
 # -*- coding: utf8 -*-
+"""
+    zwl.lines
+    =========
+
+    Management of line configurations.
+
+    :copyright: (c) 2015, Marian Sigler
+    :license: GNU GPL 2.0 or later.
+"""
+
 from werkzeug.utils import cached_property
 
 def get_lineconfig(lc):

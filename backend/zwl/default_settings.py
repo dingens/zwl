@@ -1,5 +1,13 @@
 # -*- coding: utf8 -*-
+"""
+    zwl.default_settings
+    ====================
 
+    Default settings for the application.
+
+    :copyright: (c) 2015, Marian Sigler
+    :license: GNU GPL 2.0 or later.
+"""
 
 # GENERAL SETTINGS
 

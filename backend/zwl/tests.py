@@ -1,5 +1,15 @@
 #!/usr/bin/env python2
 # -*- coding: utf8 -*-
+"""
+    zwl.tests
+    =========
+
+    Unittests for the zwl application.
+
+    :copyright: (c) 2015, Marian Sigler
+    :license: GNU GPL 2.0 or later.
+"""
+
 import itertools
 import os
 import tempfile

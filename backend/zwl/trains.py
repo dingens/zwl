@@ -1,4 +1,14 @@
 # -*- coding: utf8 -*-
+"""
+    zwl.trains
+    ==========
+
+    Processing of timetable data into a format suitable for the frontend.
+
+    :copyright: (c) 2015, Marian Sigler
+    :license: GNU GPL 2.0 or later.
+"""
+
 import itertools
 import operator
 from collections import defaultdict, deque, OrderedDict

@@ -1,4 +1,14 @@
 # -*- coding: utf8 -*-
+"""
+    zwl.database
+    ============
+
+    Database models.
+
+    :copyright: (c) 2015, Marian Sigler
+    :license: GNU GPL 2.0 or later.
+"""
+
 from datetime import datetime
 from sqlalchemy import TypeDecorator
 from sqlalchemy.ext.associationproxy import association_proxy

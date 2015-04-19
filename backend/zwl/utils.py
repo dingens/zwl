@@ -1,4 +1,14 @@
 # -*- coding: utf8 -*-
+"""
+    zwl.utils
+    =========
+
+    Various utility functions.
+
+    :copyright: (c) 2015, Marian Sigler
+    :license: GNU GPL 2.0 or later.
+"""
+
 import socket
 import warnings
 from contextlib import contextmanager

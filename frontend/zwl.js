@@ -1,6 +1,18 @@
 var ZWL = {};
 
 /*
+    zwl
+    ===
+
+    An application to display train timetables in a graphical format.
+
+    This file contains the frontend side JavaScript code.
+
+    :copyright: (c) 2015, Marian Sigler
+    :license: GNU GPL 2.0 or later.
+*/
+
+/*
 Code layout remarks
 ===================
 

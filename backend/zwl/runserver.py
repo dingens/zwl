@@ -1,5 +1,15 @@
 #!/usr/bin/env python2
 # -*- coding: utf8 -*-
+"""
+    zwl.runserver
+    =============
+
+    Code for starting the werkzeug's built-in development server.
+
+    :copyright: (c) 2015, Marian Sigler
+    :license: GNU GPL 2.0 or later.
+"""
+
 import os
 import sys
 from flask import Response
