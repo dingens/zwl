@@ -21,6 +21,7 @@ from zwl.predict import Manager
 from zwl.trains import get_train_ids_within_timeframe, get_train_information
 from zwl.utils import js2time, time2js, get_time
 
+
 @app.route('/lines/')
 @app.route('/lines/<key>.json')
 def get_line(key=None):
@@ -44,6 +45,7 @@ def predict():
     end = ttime()
 
     return Response('done (%fs)' % (end - start), mimetype='text/plain')
+
 
 @app.route('/graphdata/<line>.json')
 def get_graph_data(line):
@@ -154,9 +156,11 @@ def frontend(subdir='', filename=None):
         os.path.join(app.root_path, os.pardir, os.pardir, 'frontend'))
     return send_from_directory(os.path.join(frontend_dir, subdir), filename)
 
+
 @app.route('/favicon.ico')
 def favicon():
     return frontend(filename='favicon.ico')
+
 
 @app.route('/_variables.js')
 def js_variables():
@@ -168,6 +172,7 @@ def js_variables():
     return Response(('%s = %s;\n' % (k, json.htmlsafe_dumps(v))
                      for (k,v) in vars.items()),
                     mimetype='text/javascript')
+
 
 @app.route('/_style.css')
 def stylesheet():
