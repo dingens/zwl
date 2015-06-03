@@ -47,10 +47,10 @@ ZWL.Display = function (element, viewconfig) {
     // two gray ones. Chrome doesn't accept the translate on <svg>, only on <g>
     this.svg = this.svgelem.group().translate(0.5, 0.5);
 
-    this.timezoom = 1/4; // can be overridden by viewconfig. pixels per second
+    this.timezoom = 1/2; // can be overridden by viewconfig. pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
     this.now = 13095468;
-    this.starttime = this.now - 600;
+    this.starttime = this.now - 300;
     this.endtime = null;
 
     this.timeaxis = new ZWL.TimeAxis(this);
