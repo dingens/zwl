@@ -63,7 +63,7 @@ ZWL.Display = function (element, viewconfig) {
         var graphNames = this.graphs.map(function(g) {
             return ALL_LINECONFIGS[g.linename];
         });
-        document.title = graphNames.join(' / ') + ' - ZWL - EBuEF';
+        document.title = graphNames.join(' / ') + ' - ZWL - EBuEf';
 
     } catch (e) {
         if ( ! ( e instanceof ZWL.ViewConfigParseError))
