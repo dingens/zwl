@@ -11,6 +11,9 @@
 
 # GENERAL SETTINGS
 
+# Whether to activate debug mode. Don't activate in production!
+DEBUG = False
+
 # The database to connect to. For information about the url format, see
 # http://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls
 SQLALCHEMY_DATABASE_URI = None
