@@ -19,7 +19,6 @@ class ClockServer(object):
     `zwl.utils.ClockConnection`.
     """
     def __init__(self, current_time=None, running=True):
-        print 'ClockServer', current_time, running
         self.clock = Clock(current_time, running)
 
     def listen(self, host=None, port=None):
@@ -89,7 +88,6 @@ class Clock(object):
         if isinstance(current_time, time):
             current_time = datetime.combine(date.today(), current_time)
 
-        print 'new clock', current_time, running
         if running:
             self.state = 'running'
             self.diff = current_time - now
@@ -156,7 +154,7 @@ if __name__ == '__main__':
     if sys.argv[1] == 'realtime':
         cs = ClockServer(datetime.now(), running)
     elif '-' in sys.argv[1]:
-        cs = ClockServer(datetime.strptime(sys.argv[1], '%FT%T'), running)
+        cs = ClockServer(datetime.strptime(sys.argv[1], '%Y-%m-%dT%H:%M:%S'), running)
     else:
         cs = ClockServer(datetime.strptime(sys.argv[1], '%s'), running)
 
