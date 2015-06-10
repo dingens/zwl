@@ -151,7 +151,7 @@ ZWL.Display.prototype = {
         graphbottommargin: 50,
         graphhorizmargin: 70,
         graphminwidth: 200,
-        timeaxiswidth: 75,
+        timeaxiswidth: 80,
         horizdistance: -10,
     },
 };
