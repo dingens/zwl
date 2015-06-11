@@ -324,7 +324,7 @@ add_lineconfig('xab-xws', u'XAB-XLG-XWF-XWS', [
     Signal('XPN_A#1', 52, 'left'),
     OpenLine('XPN#1_XTS#1', 56, 1100, 1),
     Signal('XTS_12#1', 60, 'right'),
-    Siding('XTS#1', 62, 'Tessin'),
+    Junction('XTS#1', 62, 'Tessin'),
     Signal('XTS_11#1', 64, 'left'),
     OpenLine('XTS#1_XLG#1', 69, 1000, 1),
     Signal('XLG_4#1', 73, 'right'),
