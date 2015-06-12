@@ -324,7 +324,7 @@ add_lineconfig('xab-xws', u'XAB-XLG-XWF-XWS', [
     Signal('XPN_A#1', 52, 'left'),
     OpenLine('XPN#1_XTS#1', 56, 1100, 1),
     Signal('XTS_12#1', 60, 'right'),
-    Junction('XTS#1', 62, 'Tessin'),
+    Junction('XTS#1', 62, u'Tessin'),
     Signal('XTS_11#1', 64, 'left'),
     OpenLine('XTS#1_XLG#1', 69, 1000, 1),
     Signal('XLG_4#1', 73, 'right'),
@@ -338,4 +338,19 @@ add_lineconfig('xab-xws', u'XAB-XLG-XWF-XWS', [
     Signal('XWF_B#1', 93, 'left'),
     OpenLine('XWF#1_XWS#1', 96, 500, 1), #TODO: no open line (bahnhofsteil)
     Station('XWS#1', 100, u'Walfdorf-Spendenkasse'),
+])
+
+add_lineconfig('xpn-xsc', u'XPN-XSC', [
+    #TODO distances
+    Station('XPN#1', 0, u'Pörsten'),
+    Signal('XPN_B#1', 5, 'right'),
+    Signal('XPN_A#1', 5, 'left'),
+    OpenLine('XPN#1_XTS#1', 25, 1100, 1),
+    Signal('XTS_12#1', 45, 'right'),
+    Junction('XTS#1', 50, u'Tessin'),
+    Signal('XTS_11#1', 55, 'left'),
+    OpenLine('XTS#1_XSC#1', 75, 1100, 1),
+    Signal('XSC_F#1', 95, 'right'),
+    Signal('XSC_N#1', 95, 'left'),
+    Station('XSC#1', 100, u'Schattenbahnhof'),
 ])
