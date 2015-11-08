@@ -129,12 +129,22 @@ def get_graph_data(line):
 
 @app.route('/time')
 def time_plain():
-    # debug method, json api to come
     state, time = get_time()
     timestr = time.strftime('%F %T')
 
     return Response('state: %s\ntime:  %s' % (state, timestr),
                     mimetype='text/plain')
+
+
+@app.route('/clock.json')
+def clock():
+    sleep(app.config['RESPONSE_DELAY'])
+    state, timestamp = get_time()
+    return jsonify(
+        state=state,
+        time=time2js(timestamp.time()),
+        timestr=timestamp.strftime('%F %T'), # debugging only
+    )
 
 
 @app.route('/')
@@ -168,6 +178,7 @@ def js_variables():
         'SCRIPT_ROOT': request.script_root,
         'DEFAULT_VIEWCONFIG': 'gt/ring-xwf,.01,.99',
         'ALL_LINECONFIGS': {l.id: l.name for l in lineconfigs.values()},
+        'REFRESH_INTERVAL': app.config['REFRESH_INTERVAL']*1000, # milliseconds
     }
     return Response(('%s = %s;\n' % (k, json.htmlsafe_dumps(v))
                      for (k,v) in vars.items()),

@@ -16,14 +16,14 @@ var ZWL = {};
 Code layout remarks
 ===================
 
-vocabulary notes.
+vocabulary notes
 * graph: a diagram
 * line: a concatenation of stations and rail lines, and information about
   these elements. Corresponds roughly to German "Strecke"
 * path: the image drawn inside a graph for one train. Must not be confused with
   `line`, see above.
 
-class hierarchy.
+class hierarchy
 * ZWL.Display is the main class. It contains all other elements, manages the
   overall layout and keeps the time.
 * ZWL.TimeAxis draws a draggable time axis. By dragging it the time frame
@@ -38,6 +38,15 @@ class hierarchy.
   displayed. It is normally configured by the user using location.hash. It
   is responsible for neatly positioning graph(s) and timeaxis on the screen.
 
+the update method has to be present on every class and is called with a
+parameter of type dict with the following keys set to true, respectively, if:
+* initial: the first time update() is called
+* starttime: display.starttime changed
+* size: window size (or graph positioning) changed
+* dragging: while the user is dragging something. (In this case, an identical
+  call to update() without this flag will be made as the user stops dragging.)
+* refresh: automatic periodic update
+
 */
 
 
@@ -49,9 +58,9 @@ ZWL.Display = function (element, viewconfig) {
 
     this.timezoom = 1/2; // can be overridden by viewconfig. pixels per second
     this.epoch = 13042800; // the time that corresponds to y=0
-    this.now = 13095468;
-    this.starttime = this.now - 300;
+    this.starttime = null;
     this.endtime = null;
+    this.refreshtimeout = null;
 
     this.timeaxis = new ZWL.TimeAxis(this);
     try {
@@ -75,45 +84,85 @@ ZWL.Display = function (element, viewconfig) {
         return;
     }
 
-    // initially position everything
-    this.sizechange();
-
     // avoid resizing tons of times while the user drags the window
     $(window).resize(function () {
         window.clearTimeout(this.resizetimeout);
         this.resizetimeout =
-            window.setTimeout(this.sizechange.bind(this), 250);
+            window.setTimeout(this.update.bind(this), 250, {'size':true});
     }.bind(this));
+
+    this.refresh_clock((function (changed) {
+        changed.initial = true;
+        this.update(changed);
+    }).bind(this));
 };
 ZWL.Display.prototype = {
-    sizechange: function (width,height) {
-        if ( width == undefined && height == undefined) {
-            width = $(window).width() - 25;
-            height = $(window).height() - 25;
+    update: function (changes) {
+        console.log('Display.update', changes);
+
+        // first, apply update to the display itself
+        if ( changes.initial || changes.size ) {
+            this._sizechange();
+            this.viewconfig.sizechange(this);
         }
-        this.width = width;
-        this.height = height;
-        this.svgelem.size(width,height);
+        if ( changes.initial || changes.size || changes.starttime ) {
+            this.calculate_endtime();
+        }
+
+        // second, propagate updates to children
+        this.timeaxis.update(changes);
+        this.viewconfig.update(this, changes);
+        this.graphs.map(function(g) {
+            g.update(changes);
+        });
+    },
+    _sizechange: function () {
+        if ( this.width == undefined && this.height == undefined) {
+            this.width = $(window).width() - 25;
+            this.height = $(window).height() - 25
+        }
+        this.svgelem.size(this.width,this.height);
+    },
+    calculate_endtime: function() {
         this.endtime = this.starttime + (this.height - this.measures.graphtopmargin
                        - this.measures.graphbottommargin) / this.timezoom;
-
-        this.viewconfig.sizechange(this, width, height);
     },
-    timechange: function () {
-        // this runs lots of times while the user moves the time axis, so keep it short!
+    refresh_clock: function (callback) {
+        this.clockgetter = $.getJSON(SCRIPT_ROOT + '/clock.json',
+            (function (data) {
+                this.clockstate = data.state;
 
-        this.timeaxis.timechange();
-        this.graphs.map(function(g) {
-            g.timechange();
-        });
-        this.endtime = this.starttime + (this.height - this.measures.graphtopmargin
-                       - this.measures.graphbottommargin) / this.timezoom;
-    },
-    redraw: function () {
-        this.graphs.map(function(g) {
-            g.redraw();
-        });
-        this.timeaxis.redraw();
+                var oldstarttime = this.starttime;
+                // only move visible area at startup or when `now` is visible,
+                // i.e. don't move it when the user scrolled to past/future
+                if ( this.now == null )
+                    //TODO: use something relative to timezoom instead of 300
+                    this.starttime = data.time - 300;
+                else if ( this.now > this.starttime && this.now < this.endtime )
+                    this.starttime += data.time - this.now;
+
+                this.now = data.time;
+
+                // in some situations (eg the first time this is called) we
+                // need differing `update` calls
+                changed = {'refresh': true,
+                           'starttime': oldstarttime != this.starttime};
+                if ( callback == undefined )
+                    this.update(changed);
+                else
+                    callback(changed);
+            }).bind(this)
+            //TODO: handle no reply / error
+        );
+
+        window.setTimeout(
+                (function() { this.clockgetter.abort(); }).bind(this),
+                REFRESH_INTERVAL/2);
+
+        window.clearTimeout(this.refreshtimeout);
+        this.refreshtimeout = window.setTimeout(
+                this.refresh_clock.bind(this), REFRESH_INTERVAL);
+        //TODO: stop refreshing after a certain time without user interaction
     },
     focustrain: function (trainnr) {
         // quickfix for firefox, see issue #24
@@ -238,7 +287,28 @@ ZWL.Graph.from_string = function (display, vc) {
     return new ZWL.Graph(display, linename, cfg);
 };
 ZWL.Graph.prototype = {
-    sizechange: function (x,y, width,height) {
+    update: function (changes) {
+        console.log('Graph(' + this.linename + ').update', changes);
+
+        if ( changes.initial || changes.starttime ) {
+            this._timechange();
+        }
+        if ( changes.initial || changes.size ) {
+            this._sizechange();
+        }
+        if ( changes.initial || changes.size ||
+                (changes.starttime && !changes.dragging) ) {
+            this._redraw();
+        }
+        if ( changes.initial || changes.refresh ) {
+            this.linegetter.done((function () {
+                this.fetch_trains();
+            }).bind(this));
+        }
+    },
+    setsize: function (x,y, width,height) {
+        // helper function to make code shorter in ViewConfig.sizechange()
+
         if (arguments.length < 4) console.error('not enough arguments');
 
         // position and dimensions of the graph box
@@ -247,14 +317,20 @@ ZWL.Graph.prototype = {
         this.boxy = Math.floor(y);
         this.boxwidth = Math.ceil(width);
         this.boxheight = Math.ceil(height);
-
+    },
+    _sizechange: function () {
         var bb = this.linegetterthrobber.bbox()
         this.linegetterthrobber.move(this.boxx + (this.boxwidth-bb.width) / 2,
                                      this.boxy + (this.boxheight-bb.height) / 2);
 
-        this.redraw();
+        // size of internal drawing (covering the whole line)
+        this.drawwidth = this.boxwidth / (this.xend-this.xstart)
+        this.trainboxframe
+            .size(this.boxwidth, this.boxheight)
+            .move(this.boxx, this.boxy)
+            .back();
     },
-    timechange: function () {
+    _timechange: function () {
         this.trainbox.translate(
             this.boxx,this.boxy - this.display.time2y(this.display.starttime));
 
@@ -265,16 +341,7 @@ ZWL.Graph.prototype = {
         //TODO: see if this has to be rate-limited (as with window.resize)
         this.reposition_train_labels();
     },
-    redraw: function () {
-        // size of internal drawing (covering the whole line)
-        this.drawwidth = this.boxwidth / (this.xend-this.xstart)
-        this.trainboxframe
-            .size(this.boxwidth, this.boxheight)
-            .move(this.boxx, this.boxy)
-            .back();
-
-        this.timechange();
-
+    _redraw: function () {
         this.locaxis.g.translate(this.boxx, this.boxy-this.measures.locaxisoverbox);
         this.locaxis.bottom.translate(this.boxx, this.boxy + this.boxheight
             + this.measures.locaxisunderbox);
@@ -288,9 +355,9 @@ ZWL.Graph.prototype = {
         this.nowmarker.plot(this.pos2x(0),this.display.time2y(this.display.now),
                             this.pos2x(0)+this.drawwidth,this.display.time2y(this.display.now));
 
-        this.linegetter.done(this.late_redraw.bind(this));
+        this.linegetter.done(this._late_redraw.bind(this));
     },
-    late_redraw: function () {
+    _late_redraw: function () {
         // redraw() code that can only be run after this.line is loaded
 
         for ( var i in this.line.elements ) {
@@ -308,8 +375,6 @@ ZWL.Graph.prototype = {
                 }
             }
         }
-
-        this.fetch_trains();
     },
     reposition_train_labels: function () {
         for ( var tnr in this.trains ) {
@@ -442,16 +507,30 @@ ZWL.TimeAxis = function ( display ) {
     };
     this.axis.dragmove = function (delta, event) {
         timeaxis.display.starttime = timeaxis.display.y2time((-this.transform().y));
-        timeaxis.display.timechange();
+        timeaxis.display.update({'starttime':true, 'dragging':true});
     };
     this.axis.dragend = function (delta, event) {
         this.removeClass('grabbing');
-        timeaxis.display.redraw();
+        timeaxis.display.update({'starttime':true});
     };
 
     this.times = {}
 }
 ZWL.TimeAxis.prototype = {
+    update: function (changes) {
+        console.log('TimeAxis.update', changes);
+
+        if ( changes.starttime ) {
+            this.timechange();
+        }
+        if ( changes.refresh ) {
+            this.redraw();
+        }
+        if ( changes.initial || changes.size ||
+                (changes.starttime && !changes.dragging) ) {
+            this.redraw()
+        }
+    },
     sizechange: function (x,y, width,height) {
         if (arguments.length < 4) console.error('not enough arguments');
 
@@ -567,14 +646,6 @@ ZWL.TrainDrawing = function (graph, trainnr) {
     this._create_segments();
 }
 ZWL.TrainDrawing.prototype = {
-    _create_segments: function () {
-        this.segments = this.train.info.segments.map(function (segment) {
-            return new ZWL.TrainDrawingSegment(this, segment);
-        }.bind(this));
-    },
-    redraw_labels: function () {
-        this.segments.map(function (segment) { segment.redraw_labels(); });
-    },
     update: function () {
         if ( this.train.info.segments.length != this.segments.length ) {
             this.segments.map(function (segment) { segment.remove(); });
@@ -582,6 +653,14 @@ ZWL.TrainDrawing.prototype = {
         } else {
             this.segments.map(function (segment) { segment.update(); });
         }
+    },
+    _create_segments: function () {
+        this.segments = this.train.info.segments.map(function (segment) {
+            return new ZWL.TrainDrawingSegment(this, segment);
+        }.bind(this));
+    },
+    redraw_labels: function () {
+        this.segments.map(function (segment) { segment.redraw_labels(); });
     },
     mouseenter: function () {
         this.graph.display.focustrain(this.train.info.nr);
@@ -866,6 +945,9 @@ ZWL.ViewConfig = function (method, allargs) {
     }
 }
 ZWL.ViewConfig.prototype = {
+    update: function (display, changes) {
+        console.log('ViewConfig.update', changes);
+    },
     apply: function (display) {
         display.graphs = []
         this.graphs.map(function(g) {
@@ -874,11 +956,13 @@ ZWL.ViewConfig.prototype = {
         if ( this.timezoom != undefined )
             display.timezoom = this.timezoom;
     },
-    sizechange: function (display, width, height) {
+    sizechange: function (display) {
         var dm = display.measures;
+        var width = display.width;
+        var height = display.height;
         var innerheight = height - dm.graphtopmargin - dm.graphbottommargin;
         if ( this.method == 'gt' ) {
-            display.graphs[0].sizechange(dm.graphhorizmargin, dm.graphtopmargin,
+            display.graphs[0].setsize(dm.graphhorizmargin, dm.graphtopmargin,
                 width-dm.timeaxiswidth-dm.graphhorizmargin*2, innerheight);
             display.timeaxis.sizechange(width-dm.timeaxiswidth, dm.graphtopmargin,
                 dm.timeaxiswidth, innerheight);
@@ -886,7 +970,7 @@ ZWL.ViewConfig.prototype = {
         if ( this.method == 'tg' ) {
             display.timeaxis.sizechange(0, dm.graphtopmargin,
                 dm.timeaxiswidth, innerheight);
-            display.graphs[0].sizechange(dm.timeaxiswidth+dm.graphhorizmargin+dm.horizdistance, dm.graphtopmargin,
+            display.graphs[0].setsize(dm.timeaxiswidth+dm.graphhorizmargin+dm.horizdistance, dm.graphtopmargin,
                 width-dm.timeaxiswidth-2*dm.graphhorizmargin, innerheight);
         } else if ( ['tgg', 'gtg', 'ggt'].indexOf(this.method) > -1 ) {
             var graphswidth = width - dm.timeaxiswidth - 4*dm.graphhorizmargin - dm.horizdistance;
@@ -894,25 +978,25 @@ ZWL.ViewConfig.prototype = {
                 Math.max(graphswidth * this.proportion, dm.graphminwidth),
                 graphswidth - dm.graphminwidth);
             if ( this.method == 'ggt' ) {
-                display.graphs[0].sizechange(dm.graphhorizmargin, dm.graphtopmargin,
+                display.graphs[0].setsize(dm.graphhorizmargin, dm.graphtopmargin,
                     firstgraphwidth, innerheight);
-                display.graphs[1].sizechange(firstgraphwidth+dm.horizdistance+3*dm.graphhorizmargin, dm.graphtopmargin,
+                display.graphs[1].setsize(firstgraphwidth+dm.horizdistance+3*dm.graphhorizmargin, dm.graphtopmargin,
                     graphswidth-firstgraphwidth, innerheight);
                 display.timeaxis.sizechange(width-dm.timeaxiswidth, dm.graphtopmargin,
                     dm.timeaxiswidth, innerheight);
             } else if ( this.method == 'gtg' ) {
-                display.graphs[0].sizechange(dm.graphhorizmargin, dm.graphtopmargin,
+                display.graphs[0].setsize(dm.graphhorizmargin, dm.graphtopmargin,
                     firstgraphwidth, innerheight);
                 display.timeaxis.sizechange(firstgraphwidth+2*dm.graphhorizmargin+dm.horizdistance, dm.graphtopmargin,
                     dm.timeaxiswidth, innerheight);
-                display.graphs[1].sizechange(firstgraphwidth+3*dm.graphhorizmargin+2*dm.horizdistance+dm.timeaxiswidth, dm.graphtopmargin,
+                display.graphs[1].setsize(firstgraphwidth+3*dm.graphhorizmargin+2*dm.horizdistance+dm.timeaxiswidth, dm.graphtopmargin,
                     graphswidth-firstgraphwidth, innerheight);
             } else if ( this.method == 'tgg' ) {
                 display.timeaxis.sizechange(0, dm.graphtopmargin,
                     dm.timeaxiswidth, innerheight);
-                display.graphs[0].sizechange(dm.timeaxiswidth+dm.horizdistance+dm.graphhorizmargin, dm.graphtopmargin,
+                display.graphs[0].setsize(dm.timeaxiswidth+dm.horizdistance+dm.graphhorizmargin, dm.graphtopmargin,
                     firstgraphwidth, innerheight);
-                display.graphs[1].sizechange(firstgraphwidth+3*dm.graphhorizmargin+2*dm.horizdistance+dm.timeaxiswidth, dm.graphtopmargin,
+                display.graphs[1].setsize(firstgraphwidth+3*dm.graphhorizmargin+2*dm.horizdistance+dm.timeaxiswidth, dm.graphtopmargin,
                     graphswidth-firstgraphwidth, innerheight);
             }
         }

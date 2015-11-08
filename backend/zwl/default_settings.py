@@ -33,6 +33,10 @@ TRAIN_COLOR_MAP_DARK = {'nv':'#f44', 'fv':'#48f', 'gv':'#2f6',
 # response times.
 RESPONSE_DELAY = 0
 
+# Number of seconds (int or float) after which the frontend refreshes clock and
+# timetable data.
+REFRESH_INTERVAL = 15
+
 
 # PREDICTION MODULE RELATED SETTINGS
 
