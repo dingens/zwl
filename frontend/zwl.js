@@ -98,8 +98,6 @@ ZWL.Display = function (element, viewconfig) {
 };
 ZWL.Display.prototype = {
     update: function (changes) {
-        console.log('Display.update', changes);
-
         // first, apply update to the display itself
         if ( changes.initial || changes.size ) {
             this._sizechange();
@@ -288,8 +286,6 @@ ZWL.Graph.from_string = function (display, vc) {
 };
 ZWL.Graph.prototype = {
     update: function (changes) {
-        console.log('Graph(' + this.linename + ').update', changes);
-
         if ( changes.initial || changes.starttime ) {
             this._timechange();
         }
@@ -518,8 +514,6 @@ ZWL.TimeAxis = function ( display ) {
 }
 ZWL.TimeAxis.prototype = {
     update: function (changes) {
-        console.log('TimeAxis.update', changes);
-
         if ( changes.starttime ) {
             this.timechange();
         }
@@ -946,7 +940,6 @@ ZWL.ViewConfig = function (method, allargs) {
 }
 ZWL.ViewConfig.prototype = {
     update: function (display, changes) {
-        console.log('ViewConfig.update', changes);
     },
     apply: function (display) {
         display.graphs = []
