@@ -91,10 +91,8 @@ ZWL.Display = function (element, viewconfig) {
             window.setTimeout(this.update.bind(this), 250, {'size':true});
     }.bind(this));
 
-    this.refresh_clock((function (changed) {
-        changed.initial = true;
-        this.update(changed);
-    }).bind(this));
+    this.update({'initial':true});
+    this.refresh_clock(this.update.bind(this));
 };
 ZWL.Display.prototype = {
     update: function (changes) {
@@ -296,7 +294,7 @@ ZWL.Graph.prototype = {
                 (changes.starttime && !changes.dragging) ) {
             this._redraw();
         }
-        if ( changes.initial || changes.refresh ) {
+        if ( changes.initial || changes.refresh || changes.timezoom ) {
             this.linegetter.done((function () {
                 this.fetch_trains();
             }).bind(this));
@@ -486,11 +484,17 @@ ZWL.TimeAxis = function ( display ) {
     this.zoombuttons.plus = this.zoombuttons.g.group()
         .add(this.svg.rect(20,20))
         .add(this.svg.path('M 3,10 L 17,10 M 10,3 L 10,17'))
-        .click(function() { display.timezoom *= Math.SQRT2; display.redraw(); });
+        .click(function() {
+            display.timezoom *= Math.SQRT2;
+            display.update({'starttime': true, 'timezoom': true});
+        });
     this.zoombuttons.minus = this.zoombuttons.g.group()
         .add(this.svg.rect(20,20))
         .add(this.svg.path('M 3,10 L 17,10'))
-        .click(function() { display.timezoom /= Math.SQRT2; display.redraw(); });
+        .click(function() {
+            display.timezoom /= Math.SQRT2;
+            display.update({'starttime': true, 'timezoom': true});
+        });
 
     this.clock = {};
     this.clock.g = this.svg.group().addClass('clock');
@@ -517,7 +521,7 @@ ZWL.TimeAxis.prototype = {
         if ( changes.starttime ) {
             this.timechange();
         }
-        if ( changes.refresh ) {
+        if ( changes.refresh || changes.timezoom) {
             this.redraw();
         }
         if ( changes.initial || changes.size ||
@@ -532,7 +536,6 @@ ZWL.TimeAxis.prototype = {
         this.y = y;
         this.width = width;
         this.height = height;
-        this.redraw();
     },
     timechange: function () {
         this.axis.translate(0, -this.display.time2y(this.display.starttime));
@@ -1013,6 +1016,8 @@ function coalesce() {
 }
 
 function timeformat (time, format) {
+    if (isNaN(time)) return '';
+
     var d = new Date(time*1000);
     var min = d.getMinutes();
     var sec = d.getSeconds();
