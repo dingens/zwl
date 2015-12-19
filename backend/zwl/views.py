@@ -37,7 +37,7 @@ def get_line(key=None):
 
 @app.route('/lines/info')
 def line_info():
-    # sort '-foo' directly after 'foo' (the former being reversion of the latter)
+    # sort '-foo' immediately after 'foo' (the former being reversion of the latter)
     ids = sorted(lineconfigs, key=lambda k: (k.lstrip('-'), k.startswith('-')))
     return Response(u'\n\n\n'.join(get_lineconfig(l).info() for l in ids),
             mimetype='text/plain')

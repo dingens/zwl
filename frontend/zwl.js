@@ -38,8 +38,8 @@ class hierarchy
   displayed. It is normally configured by the user using location.hash. It
   is responsible for neatly positioning graph(s) and timeaxis on the screen.
 
-the update method has to be present on every class and is called with a
-parameter of type dict with the following keys set to true, respectively, if:
+the update method has to be present on every class and is called with one
+parameter: an object with the following keys set to true, respectively, if:
 * initial: the first time update() is called
 * starttime: display.starttime changed
 * size: window size (or graph positioning) changed

@@ -5,6 +5,9 @@
 
     Management of line configurations.
 
+    A line configuration describes all elements (stations, signals, ...) of a line.
+    Each of the frontend's Graph elements shows trains within one such line.
+
     :copyright: (c) 2015, Marian Sigler
     :license: GNU GPL 2.0 or later.
 """
