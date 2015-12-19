@@ -94,6 +94,14 @@ class LineConfig(object):
             elements=[e.serialize() for e in self.elements],
         )
 
+    def info(self, *args, **kwargs):
+        return '\n'.join(self._info(*args, **kwargs))
+    def _info(self, most_elements=False):
+        yield u'%-14s %s' % (self.id, self.name)
+        for e in self.elements:
+            if e.display_label or (most_elements and e.code):
+                yield u'%-5s  %0.2f    %s' % (e.code, e.pos, e.name)
+
     def __repr__(self):
         return '<LineConfig %s #elem=%d>' % (self.id, len(self.elements))
 
