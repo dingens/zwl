@@ -10,6 +10,7 @@
 """
 
 from werkzeug.utils import cached_property
+from copy import copy
 
 def get_lineconfig(lc):
     if lc is None:
@@ -181,10 +182,35 @@ class Siding(Loc):
     display_label = False
 
 lineconfigs = {}
-def add_lineconfig(*args, **kwargs):
-    l = LineConfig(*args, **kwargs)
-    assert l.id not in lineconfigs
+def add_lineconfig(id, *args, **kwargs):
+    reverse = None
+    if 'reverse' in kwargs:
+        reverse = kwargs.pop('reverse')
+
+    l = LineConfig(id, *args, **kwargs)
+    assert id not in lineconfigs
     lineconfigs[l.id] = l
+
+    if reverse is not None:
+        if isinstance(reverse, basestring):
+            reversed_id = '-%s' % id
+            reversed_name = reverse
+        else:
+            reversed_id, reversed_name = reverse
+        rl = reverse_lineconfig(id, reversed_id, reversed_name)
+
+def reverse_lineconfig(orig_id, id, name):
+    orig = get_lineconfig(orig_id)
+    original_elements = orig.elements[::-1]
+    elements = []
+    for oe in original_elements:
+        e = copy(oe)
+        e.pos = 1 - e.pos
+        elements.append(e)
+
+    l = LineConfig(id, name, elements)
+    assert id not in lineconfigs
+    lineconfigs[id] = l
 
 add_lineconfig('sample', u'Beispielsträcke', [
     Station('XDE#1', 0, u'Derau'),
@@ -246,7 +272,7 @@ add_lineconfig('ring-xwf', u'Ring, XWF-XCE-XDE-XBG-XWF', [
     Station('XWF#3', 99, u'Walfdorf'),
     Signal('XWF_P#3', 100, 'right'),
     Signal('XWF_A#3', 100, 'left'),
-])
+    ], reverse=u'Ring, XWF-XBG-XDE-XCE-XWF')
 
 add_lineconfig('ring-xde', u'Ring, XDE-XBG-XWF-XCE-XDE', [
     Signal('XDE_F#1', 0, 'right'),
@@ -296,8 +322,7 @@ add_lineconfig('ring-xde', u'Ring, XDE-XBG-XWF-XCE-XDE', [
     Station('XDE#3', 99, u'Derau'),
     Signal('XDE_P#3', 100, 'right'),
     Signal('XDE_A#3', 100, 'left'),
-])
-
+    ], reverse=u'Ring, XDE-XCE-XWF-XBG-XDE')
 
 add_lineconfig('xab-xws', u'XAB-XLG-XWF-XWS', [
     #TODO distances XAB--XPN
@@ -338,7 +363,7 @@ add_lineconfig('xab-xws', u'XAB-XLG-XWF-XWS', [
     Signal('XWF_B#1', 93, 'left'),
     OpenLine('XWF#1_XWS#1', 96, 500, 1), #TODO: no open line (bahnhofsteil)
     Station('XWS#1', 100, u'Walfdorf-Spendenkasse'),
-])
+    ], reverse=('xws-xab', u'XWS-XWF-XLG-XAB'))
 
 add_lineconfig('xpn-xsc', u'XPN-XSC', [
     #TODO distances
@@ -353,4 +378,4 @@ add_lineconfig('xpn-xsc', u'XPN-XSC', [
     Signal('XSC_F#1', 95, 'right'),
     Signal('XSC_N#1', 95, 'left'),
     Station('XSC#1', 100, u'Schattenbahnhof'),
-])
+    ], reverse=('xsc-xpn', u'XSC-XPN'))
