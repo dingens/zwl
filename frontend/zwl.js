@@ -357,7 +357,7 @@ ZWL.Graph.prototype = {
         for ( var i in this.line.elements ) {
             var loc = this.line.elements[i];
             if ( loc.display_label ) {
-                if (this.loc2pos(loc.id).within(this.xstart, this.xend)) {
+                if (this.loc_visible(loc.id)) {
                     var x = Math.round(this.pos2x(loc.id));
                     this.locaxis[loc.id].move(x, 0).show();
                     this.locmarkers[loc.id].plot(this.boxx+x, this.boxy,
@@ -445,6 +445,9 @@ ZWL.Graph.prototype = {
     },
     loc2pos: function(loc) {
         return this.line.getElement(loc).pos;
+    },
+    loc_visible: function(loc) {
+        return this.loc2pos(loc).within(this.xstart, this.xend);
     },
     _parse_viewcfg: function (raw) {
         if ( raw.length == 0 )
@@ -697,6 +700,8 @@ ZWL.TrainDrawingSegment = function (drawing, timetablesegment) {
         .clipWith(this.graph.trainclip)
         .maskWith(this.graph.pastfade.mask);
 
+    this.tracknumbers = this.pathsvg.group().addClass('tracknumbers');
+
     this.entrylabel = new ZWL.TrainLabel(this, 'entry');
     this.exitlabel = new ZWL.TrainLabel(this, 'exit');
 
@@ -728,6 +733,7 @@ ZWL.TrainDrawingSegment.prototype = {
                     'loc': tte.loc,
                     'arr_plan': tte.arr_plan,
                     'dep_plan': tte.dep_plan,
+                    'track_plan': tte.track_plan,
                 });
                 laststop = tte;
                 lastline = {}
@@ -738,13 +744,14 @@ ZWL.TrainDrawingSegment.prototype = {
     },
     redraw: function () {
         this.trainpath.clear();
+        this.tracknumbers.clear();
 
         // check if the segment is completely out of the box and we don't need
         // to draw it at all
         var outside = true;
         for ( var i in this.elements ) {
             var elem = this.elements[i];
-            if ( 'loc' in elem && this.graph.loc2pos(elem.loc).between(this.graph.xstart, this.graph.xend) ) {
+            if ( 'loc' in elem && this.graph.loc_visible(elem.loc) ) {
                 outside = false;
                 break;
             }
@@ -765,17 +772,28 @@ ZWL.TrainDrawingSegment.prototype = {
                     elem.path = this.trainpath.line(x1, y1, x2, y2);
                     if ( elem.opposite == true ) elem.path.addClass('opposite');
 
-                } else if ( 'loc' in elem
-                        && elem.arr_plan != null
-                        && elem.dep_plan != null
-                        && elem.arr_plan != elem.dep_plan ) {
+                } else if ( 'loc' in elem ) {
 
                     var x = this.graph.pos2x(elem.loc);
                     var y1 = this.display.time2y(elem.arr_plan);
                     var y2 = this.display.time2y(elem.dep_plan);
 
-                    elem.path = this.trainpath.line(x, y1, x, y2);
-                    this.coordinates.push([x, y1], [x, y2]);
+                    if ( elem.arr_plan != elem.dep_plan
+                            && elem.arr_plan != null
+                            && elem.dep_plan != null ) {
+                        elem.path = this.trainpath.line(x, y1, x, y2);
+                        this.coordinates.push([x, y1], [x, y2]);
+                    }
+
+                    if ( elem.track_plan != null
+                            && this.graph.loc_visible(elem.loc)) {
+                        var y = elem.arr_plan == null ? y2 : y1;
+                        elem.tracknumberbg = this.tracknumbers.rect(20,20)
+                            .move(x-10, y1-10);
+                        elem.tracknumber = this.tracknumbers.plain(elem.track_plan)
+                            .attr({'x':x, 'y':y1});
+                        // move() moves the corner, but we want the center moved
+                    }
                 }
             }
         this.trainpathbg.plot(this.coordinates);

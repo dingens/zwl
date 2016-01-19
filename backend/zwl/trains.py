@@ -114,6 +114,8 @@ def make_timetable(train, timetable_entries, line):
     timetable_locations = [e.loc for e in timetable_entries]
 
     def _add(seg, loc, tte, **kwargs):
+        if loc.display_label:
+            kwargs['track_plan'] = tte.track_plan
         seg['timetable'].append(dict(
             loc=loc.id,
             arr_plan=time2js(tte.arr_plan), #TODO use _real when available

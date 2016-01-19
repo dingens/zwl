@@ -2,6 +2,7 @@
 
 body.theme_dark { background-color: #111; }
 body.theme_dark { color: white; }
+body.theme_dark .tracknumbers text { fill: #DDD; }
 
 line, polyline, path { stroke: white; stroke-width: 1px; fill: none; }
 text { fill: white; }
@@ -11,7 +12,14 @@ text { fill: white; }
 .trainpath line { stroke: white; stroke-width: 1.5px; stroke-linecap: round; pointer-events: none; }
 .trainpathbg { stroke: white; stroke-width: 15px; stroke-opacity: 0; pointer-events: stroke; stroke-linecap: round; }
 .trainpathg.selected .trainpath line { stroke-width: 2.5px; }
+.trainpathg.selected .trainpath line { stroke-width: 2.5px; }
 .trainpath line.opposite { stroke-dasharray: 6,8; }
+
+.trainpathg .tracknumbers { display: none; }
+.trainpathg .tracknumbers rect { fill: #222; opacity: .8; }
+.trainpathg .tracknumbers text { text-anchor: middle; dominant-baseline: middle; }
+.trainpathg.selected .tracknumbers { display: inline; }
+
 
 .trainlabelg { opacity: .8; }
 .trainlabelg.selected { opacity: 1; }

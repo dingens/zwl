@@ -62,18 +62,18 @@ def get_graph_data(line):
     if line == 'sample':
         return jsonify(trains=[
             {'type': 'ICE',
-             'nr': 406,
+             'nr': 407,
              'category': 'fv',
              'segments': [
                {
                  'timetable': [
-                   {'loc':'XDE#1', 'arr_plan':None, 'dep_plan':13099020},
+                   {'loc':'XDE#1', 'arr_plan':None, 'dep_plan':13099020, 'track_plan':4},
                    {'line':'XDE#1_XCE#1'},
-                   {'loc':'XCE#1', 'arr_plan':13099200, 'dep_plan':13099260},
+                   {'loc':'XCE#1', 'arr_plan':13099200, 'dep_plan':13099260, 'track_plan':3},
                    {'line':'XCE#1_XLG#1'},
                    {'loc':'XLG#1', 'arr_plan':13099500, 'dep_plan':13099500},
                    {'line':'XLG#1_XDE#2'},
-                   {'loc':'XDE#2', 'arr_plan':13099800, 'dep_plan':None},
+                   {'loc':'XDE#2', 'arr_plan':13099800, 'dep_plan':None, 'track_plan':3},
                  ],
                  'direction': 'right',
                },
@@ -86,7 +86,7 @@ def get_graph_data(line):
              'segments': [
                {
                  'timetable': [
-                   {'loc':'XDE#2', 'arr_plan':None, 'dep_plan':13099440},
+                   {'loc':'XDE#2', 'arr_plan':None, 'dep_plan':13099440, 'track_plan':1},
                    {'line':'XLG#1_XDE#2'},
                    {'loc':'XLG#1', 'arr_plan':13099740, 'dep_plan':13099740},
                  ],
@@ -100,11 +100,11 @@ def get_graph_data(line):
              'segments': [
                {
                  'timetable': [
-                    {'loc':'XDE#1', 'arr_plan':None, 'dep_plan':13099000},
-                    {'line':'XDE#1_XCE#1', 'opposite':True},
-                    {'loc':'XCE#1', 'arr_plan':13099140, 'dep_plan':13099140},
-                    {'line':'XCE#1_XLG#1'},
-                    {'loc':'XDE#2', 'arr_plan':13099460, 'dep_plan':None},
+                   {'loc':'XDE#1', 'arr_plan':None, 'dep_plan':13099000, 'track_plan':2},
+                   {'line':'XDE#1_XCE#1', 'opposite':True},
+                   {'loc':'XCE#1', 'arr_plan':13099140, 'dep_plan':13099140, 'track_plan':2},
+                   {'line':'XCE#1_XLG#1'},
+                   {'loc':'XDE#2', 'arr_plan':13099460, 'dep_plan':None, 'track_plan':3},
                  ],
                  'direction': 'right',
                },
@@ -212,7 +212,7 @@ def stylesheet():
 
                 yield '.theme_%s %s .trainpath line { stroke: %s; }' \
                     % (theme, catstring, color)
-                yield '.theme_%s %s .trainlabel text { fill: %s; }' \
+                yield '.theme_%s %s text { fill: %s; }' \
                     % (theme, catstring, color)
 
             yield ''
