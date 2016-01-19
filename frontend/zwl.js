@@ -446,8 +446,14 @@ ZWL.Graph.prototype = {
     loc2pos: function(loc) {
         return this.line.getElement(loc).pos;
     },
-    loc_visible: function(loc) {
-        return this.loc2pos(loc).within(this.xstart, this.xend);
+    loc_visible: function(loc, inclusive) {
+        // in some cases, it is desired that loc_visible() returns false when the
+        // location is on the edges of the visible are. set `inclusive` to false
+        // to achieve that.
+        if ( inclusive === false )
+            return this.loc2pos(loc).between(this.xstart, this.xend);
+        else
+            return this.loc2pos(loc).within(this.xstart, this.xend);
     },
     _parse_viewcfg: function (raw) {
         if ( raw.length == 0 )
@@ -751,7 +757,7 @@ ZWL.TrainDrawingSegment.prototype = {
         var outside = true;
         for ( var i in this.elements ) {
             var elem = this.elements[i];
-            if ( 'loc' in elem && this.graph.loc_visible(elem.loc) ) {
+            if ( 'loc' in elem && this.graph.loc_visible(elem.loc, false) ) {
                 outside = false;
                 break;
             }
