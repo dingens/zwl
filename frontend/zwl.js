@@ -550,6 +550,8 @@ ZWL.TimeAxis.prototype = {
         this.axis.translate(0, -this.display.time2y(this.display.starttime));
         var clockheight = this.clock.text.bbox().height/2;
         var clockpos = (this.display.now - this.display.starttime) * this.display.timezoom;
+        if ( isNaN(clockpos) )
+            clockpos = 0;
         clockpos = Math.min(this.height-clockheight, Math.max(clockheight, clockpos));
         this.clock.g.translate(this.width/2, clockpos);
     },
@@ -941,13 +943,18 @@ ZWL.ViewConfig = function (method, allargs) {
     this.args = [];
     for ( var i = 0; i < allargs.length; i++) {
         var a = allargs[i];
-        if ( a == '' )
+        if ( a == '' ) {
             continue;
-        else if ( a.substr(0,3) == 'tz=' )
+        } else if ( a.substr(0,3) == 'tz=' ) {
             // internally we use px/s, in the ui px/min
-            this.timezoom = parseFloat(a.substr(3))/60;
-        else
+            var timezoom = parseFloat(a.substr(3))/60;
+            if ( isNaN(timezoom) )
+                console.log('url contains NaN timezoom value:', a);
+            else
+                this.timezoom = timezoom;
+        } else {
             this.args.push(a);
+        }
     }
 
     if ( method == 'gt' || method == 'tg' ) {
@@ -1118,7 +1125,7 @@ SVG.extend(SVG.Text, {
             xmargin: xmargin,
             ymargin: ymargin,
             usetransform: usetransform,
-            element: this.parent.rect(0,0).back(),
+            element: this.parent().rect(0,0).back(),
         }
         this.updateframe();
         return this.frameoptions.element;
