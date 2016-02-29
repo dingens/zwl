@@ -511,17 +511,17 @@ ZWL.TimeAxis = function ( display ) {
     this.clock.box = this.clock.text.addframe(5,5,true);
 
     var timeaxis = this; // `this` is overridden in dragging functions
-    this.axis.dragstart = function (delta, event) {
+    this.axis.on('dragstart', function (delta, event) {
         this.addClass('grabbing');
-    };
-    this.axis.dragmove = function (delta, event) {
+    });
+    this.axis.on('dragmove', function (delta, event) {
         timeaxis.display.starttime = timeaxis.display.y2time((-this.transform().y));
         timeaxis.display.update({'starttime':true, 'dragging':true});
-    };
-    this.axis.dragend = function (delta, event) {
+    });
+    this.axis.on('dragend', function (delta, event) {
         this.removeClass('grabbing');
         timeaxis.display.update({'starttime':true});
-    };
+    });
 
     this.times = {}
 }
