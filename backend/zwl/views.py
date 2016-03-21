@@ -187,6 +187,7 @@ def js_variables():
         'DEFAULT_VIEWCONFIG': 'gt/ring-xwf,.01,.99',
         'ALL_LINECONFIGS': {l.id: l.name for l in lineconfigs.values()},
         'REFRESH_INTERVAL': app.config['REFRESH_INTERVAL']*1000, # milliseconds
+        'EPOCH': time2js(time(4,0,0)),
     }
     return Response(('%s = %s;\n' % (k, json.htmlsafe_dumps(v))
                      for (k,v) in vars.items()),

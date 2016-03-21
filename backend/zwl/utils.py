@@ -24,7 +24,7 @@ def time2js(t):
         return None
 
     #TODO after-midnight and weekday treatment
-    return int(datetime.combine(date(1970, 6, 1), t).strftime('%s'))
+    return int(datetime.combine(date.today(), t).strftime('%s'))
 
 def js2time(s):
     """
