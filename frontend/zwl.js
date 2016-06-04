@@ -968,6 +968,16 @@ ZWL.ViewConfig = function (method, allargs) {
         this.proportion = parseInt(this.args[1]) / 100; // url param is percent
         if ( isNaN(this.proportion) || this.proportion < 0 || this.proportion > 1 )
             throw new ZWL.ViewConfigParseError('zweiter Parameter muss zwischen 0 und 100 sein');
+    } else if ( ['tggg', 'gtgg', 'ggtg', 'gggt'].indexOf(method) > -1 ) {
+        if ( this.args.length != 5 )
+            throw new ZWL.ViewConfigParseError('Erwarte 5 Parameter, nicht ' + this.args.length);
+        this.graphs = [this.args[0], this.args[2], this.args[4]];
+        this.proportion1 = parseInt(this.args[1]) / 100; // url param is percent
+        this.proportion2 = parseInt(this.args[3]) / 100; // url param is percent
+        if ( isNaN(this.proportion1) || this.proportion1 < 0 || this.proportion1 > this.proportion2 )
+            throw new ZWL.ViewConfigParseError('Proportion1 muss zwischen 0 und Proportion2 sein');
+        if ( isNaN(this.proportion2) || this.proportion2 < this.proportion1 || this.proportion2 > 1 )
+            throw new ZWL.ViewConfigParseError('Proportion2 muss zwischen Proportion1 und 1 sein');
     } else {
         throw new ZWL.ViewConfigParseError('Ungültige Ansichtskonfiguration: ' + method);
     }
@@ -1000,7 +1010,7 @@ ZWL.ViewConfig.prototype = {
             display.graphs[0].setsize(dm.timeaxiswidth+dm.graphhorizmargin+dm.horizdistance, dm.graphtopmargin,
                 width-dm.timeaxiswidth-2*dm.graphhorizmargin, innerheight);
         } else if ( ['tgg', 'gtg', 'ggt'].indexOf(this.method) > -1 ) {
-            var graphswidth = width - dm.timeaxiswidth - 4*dm.graphhorizmargin - dm.horizdistance;
+            var graphswidth = width - dm.timeaxiswidth - 4*dm.graphhorizmargin - 2*dm.horizdistance;
             var firstgraphwidth = Math.min(
                 Math.max(graphswidth * this.proportion, dm.graphminwidth),
                 graphswidth - dm.graphminwidth);
@@ -1025,6 +1035,53 @@ ZWL.ViewConfig.prototype = {
                     firstgraphwidth, innerheight);
                 display.graphs[1].setsize(firstgraphwidth+3*dm.graphhorizmargin+2*dm.horizdistance+dm.timeaxiswidth, dm.graphtopmargin,
                     graphswidth-firstgraphwidth, innerheight);
+            }
+        } else if ( ['tggg', 'gtgg', 'ggtg', 'gggt'].indexOf(this.method) > -1 ) {
+            var graphswidth = width - dm.timeaxiswidth - 6*dm.graphhorizmargin - 3*dm.horizdistance;
+            var firstgraphwidth = Math.max(graphswidth * this.proportion1, dm.graphminwidth)
+            var thirdgraphwidth = Math.max(graphswidth * (1 - this.proportion2), dm.graphminwidth)
+            var secondgraphwidth = graphswidth - firstgraphwidth - thirdgraphwidth;
+            if ( secondgraphwidth < dm.graphminwidth ) {
+                firstgraphwidth -= (dm.graphminwidth - secondgraphwidth)/2;
+                thirdgraphwidth -= (dm.graphminwidth - secondgraphwidth)/2;
+                secondgraphwidth = dm.graphminwidth;
+            }
+            if ( this.method == 'tggg' ) {
+                display.timeaxis.sizechange(0, dm.graphtopmargin,
+                    dm.timeaxiswidth, innerheight);
+                display.graphs[0].setsize(dm.timeaxiswidth+dm.horizdistance+dm.graphhorizmargin, dm.graphtopmargin,
+                    firstgraphwidth, innerheight);
+                display.graphs[1].setsize(firstgraphwidth+dm.timeaxiswidth+2*dm.horizdistance+3*dm.graphhorizmargin, dm.graphtopmargin,
+                    secondgraphwidth, innerheight);
+                display.graphs[2].setsize(width-thirdgraphwidth-dm.graphhorizmargin, dm.graphtopmargin,
+                    thirdgraphwidth, innerheight);
+            } else if ( this.method == 'gtgg' ) {
+                display.graphs[0].setsize(dm.graphhorizmargin, dm.graphtopmargin,
+                    firstgraphwidth, innerheight);
+                display.timeaxis.sizechange(firstgraphwidth+2*dm.graphhorizmargin+dm.horizdistance, dm.graphtopmargin,
+                    dm.timeaxiswidth, innerheight);
+                display.graphs[1].setsize(firstgraphwidth+dm.timeaxiswidth+2*dm.horizdistance+3*dm.graphhorizmargin, dm.graphtopmargin,
+                    secondgraphwidth, innerheight);
+                display.graphs[2].setsize(width-thirdgraphwidth-dm.graphhorizmargin, dm.graphtopmargin,
+                    thirdgraphwidth, innerheight);
+            } else if ( this.method == 'ggtg' ) {
+                display.graphs[0].setsize(dm.graphhorizmargin, dm.graphtopmargin,
+                    firstgraphwidth, innerheight);
+                display.graphs[1].setsize(firstgraphwidth+dm.horizdistance+3*dm.graphhorizmargin, dm.graphtopmargin,
+                    secondgraphwidth, innerheight);
+                display.timeaxis.sizechange(firstgraphwidth+secondgraphwidth+2*dm.horizdistance+4*dm.graphhorizmargin, dm.graphtopmargin,
+                    dm.timeaxiswidth, innerheight);
+                display.graphs[2].setsize(width-thirdgraphwidth-dm.graphhorizmargin, dm.graphtopmargin,
+                    thirdgraphwidth, innerheight);
+            } else if ( this.method == 'gggt' ) {
+                display.graphs[0].setsize(dm.graphhorizmargin, dm.graphtopmargin,
+                    firstgraphwidth, innerheight);
+                display.graphs[1].setsize(firstgraphwidth+dm.horizdistance+3*dm.graphhorizmargin, dm.graphtopmargin,
+                    secondgraphwidth, innerheight);
+                display.graphs[2].setsize(firstgraphwidth+secondgraphwidth+2*dm.horizdistance+5*dm.graphhorizmargin, dm.graphtopmargin,
+                    thirdgraphwidth, innerheight);
+                display.timeaxis.sizechange(width-dm.timeaxiswidth, dm.graphtopmargin,
+                    dm.timeaxiswidth, innerheight);
             }
         }
     },
