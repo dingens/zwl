@@ -37,6 +37,9 @@ RESPONSE_DELAY = 0
 # timetable data.
 REFRESH_INTERVAL = 15
 
+# Link that is opened when a train number is clicked
+TIMETABLE_URL_TEMPLATE = 'http://www.ebuef/webstw/includes/popup_fahrplan.php?theme=dark&search=hide&zid={id}'
+
 
 # PREDICTION MODULE RELATED SETTINGS
 

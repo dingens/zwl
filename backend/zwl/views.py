@@ -189,6 +189,10 @@ def js_variables():
         'REFRESH_INTERVAL': app.config['REFRESH_INTERVAL']*1000, # milliseconds
         'EPOCH': time2js(time(4,0,0)),
     }
+
+    for v in ('TIMETABLE_URL_TEMPLATE',):
+        vars[v] = app.config[v]
+
     return Response(('%s = %s;\n' % (k, json.htmlsafe_dumps(v))
                      for (k,v) in vars.items()),
                     mimetype='text/javascript')

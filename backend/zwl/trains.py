@@ -74,6 +74,7 @@ def get_train_information(trains, line):
             continue
 
         yield {
+            'id': train.id,
             'type': train.type,
             'category': train.category,
             'nr': train.nr,

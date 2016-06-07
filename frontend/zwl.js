@@ -611,6 +611,7 @@ ZWL.TimeAxis.prototype = {
 }
 
 ZWL.TrainInfo = function (o) {
+    this.id = o.id;
     this.type = o.type;
     this.nr = o.nr;
     this.segments = o.segments;
@@ -641,10 +642,13 @@ ZWL.TrainDrawing = function (graph, trainnr) {
     var gm = this.graph.measures;
     this.label = {};
     this.label.g = this.labelsvg.group().addClass('trainlabel');
-    this.label.nr = this.label.g.plain(this.train.info.nr.toString())
+    this.label.nr = this.label.g.link(timetable_url(this.train.info))
+        .target('timetable_' + this.train.info.nr.toString())
+        .click(timetable_click_handler(this.train.info))
         .move(gm.trainlabelxmargin, gm.trainlabelymargin);
+    this.label.nrstring = this.label.nr.plain(this.train.info.nr.toString())
     var bb = this.label.nr.bbox();
-    this.label.box = this.label.nr
+    this.label.box = this.label.nrstring
         .addframe(gm.trainlabelxmargin, gm.trainlabelymargin);
 
     if ( this.train.info.category != null ) {
@@ -1163,6 +1167,17 @@ function intersectvertseg(x, ya, yb, x1, y1, x2, y2) {
     // If they don't intersect, return null.
     // It is required that ya < yb.
     return intersecthorizseg(x, ya, yb, y1, x1, y2, x2);
+}
+
+function timetable_click_handler(train_info) {
+    return function () {
+        // return false in case it worked to inhibit further event processing
+        return !window.open(this.to(), this.target(),
+                            'width=600,height=800,left=300')
+    };
+}
+function timetable_url(train_info) {
+    return TIMETABLE_URL_TEMPLATE.replace(/\{id\}/, train_info.id)
 }
 
 SVG.extend(SVG.Text, {
